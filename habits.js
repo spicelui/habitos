@@ -928,13 +928,13 @@ function renderHabits(updatedId = null, animate = false, wasComplete = null, isC
         for (let group of Object.values(foldersWithHabits)) {
             if (group.habits.length) {
                 const folder = group.folder;
-                const iconHtml = (uiSettings.showIcons && folder.showIcons !== false) ? `<span style="font-size:1.2rem; margin-right:6px;">${folder.icon}</span>` : '';
-                html += `<div class="folder-group" style="margin-bottom:12px;"><div class="folder-header" style="display:flex; align-items:center; margin-bottom:8px; padding-left:8px;">${iconHtml}<span style="font-weight:600;">${folder.name}</span></div>`;
-                html += `<div style="display:flex; flex-direction:column; gap:12px;">${group.habits.map(h => getHabitCardHTML(h)).join('')}</div>`;
+                const iconHtml = (uiSettings.showIcons && folder.showIcons !== false) ? `<span></span>` : '';
+                html += `<div class="folder-group"><div class="folder-header" style="display:flex;">${iconHtml}<span style="font-weight:600;">${folder.icon} ${folder.name}</span></div>`;
+                html += `<div style="display:flex; gap:12px;">${group.habits.map(h => getHabitCardHTML(h)).join('')}</div>`;
                 html += `</div>`;
             }
         }
-        container.innerHTML = html || `<div style="text-align:center; color:#8e8e93; margin-top:40px;">No hay hábitos para hoy</div>`;
+        container.innerHTML = html || `<div style="color:#8e8e93; margin-top:40px;">No hay hábitos para hoy</div>`;
     } else {
         // Sin agrupación
         container.innerHTML = sorted.length ? sorted.map(h => getHabitCardHTML(h)).join('') : `<div style="text-align:center; color:#8e8e93; margin-top:40px;">No hay hábitos para hoy</div>`;

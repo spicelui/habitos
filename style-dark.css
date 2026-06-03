@@ -288,7 +288,7 @@ hr{
 .iconsbg{
     background-color: #1c1c1da2;
 }
-#iconPickerSheet{
+#iconPickerSheet, #iconPickerSheetFolder{
     background-color: #2c2c2d;
 }
 .iconCategory .categoryTitle {
@@ -462,3 +462,16 @@ header {
 }
 }
 
+/* Search bar */
+.search-habits {
+    background: #2c2c2d;
+}
+.search-habits span {
+    color: var(--text-muted);
+}
+.search-habits input {
+    color: var(--text-main);
+}
+.search-habits input::placeholder {
+    color: var(--text-muted);
+}

@@ -1029,6 +1029,20 @@ header {
 #iconSearch::placeholder {
     color: #838388;
 }
+#iconSearchFolder {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    padding: 0;
+    font-size: 0.96rem;
+    font-family: 'sf';
+    transition: all 400ms ease; 
+    outline: none; 
+}
+#iconSearchFolder::placeholder {
+    color: #838388;
+}
 .content{
     margin: 0 16px 16px;
     display: flex;
@@ -1053,8 +1067,11 @@ header {
     flex-direction: column;
     gap: 14px;
 }
-#iconPickerSheet{
-    height: 98%;
+#iconPickerSheet, #iconPickerSheetFolder{
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(98% - env(safe-area-inset-top));
     background-color: #f4f4f7;
 }
 .iconCategory {
@@ -1411,15 +1428,15 @@ body.font-features {
 }
 .folder-group > div {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
+    gap: 16px;
 }
 .folder-header {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     padding-left: 8px;
     font-weight: 600;
+    width: 100%;
 }
 
 /* Log view sheet */
