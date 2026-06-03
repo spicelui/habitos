@@ -1,0 +1,357 @@
+@media (prefers-color-scheme: dark){
+    :root {
+    --bg: #1C1C1E;
+    --card: #2C2C2E;
+    --text-main: #fff;
+    --text-muted: #8E8E93;
+    --del: #FF453A;
+}
+
+body {
+    background: #040404;
+    color: var(--text-main);
+}
+
+#dateSelector input {
+    color: #909090; 
+}
+#dateSelector input:focus{
+    color: #ffffff99; 
+}
+
+/* --- Sheets (iOS Style) --- */
+.sheetContent {
+    background: #1C1C1E;
+    box-shadow: 0 0 28px 0px rgba(0, 0, 0, 0);
+    backdrop-filter: blur(52px);
+}
+
+.sheetContent.active {
+    box-shadow: 0 0 28px 0px rgba(0, 0, 0, 0.3);
+}
+
+/* Opcional: Oscurecer un poco la sheet de abajo cuando hay otra encima */
+#routineViewSheet.active {
+    filter: brightness(1);
+}
+
+/* Si activeSheet es diferente a routineViewSheet pero routineViewSheet existe en el DOM... */
+body:has(#viewSheet.active) #routineViewSheet,
+body:has(#streakSheet.active) #routineViewSheet,
+body:has(#iconPickerSheet.active) #routineViewSheet {
+    filter: brightness(0.7);
+    box-shadow: none;
+}
+#createSheet{
+   background-color: #1C1C1E;
+}
+.headerA{
+   background: #1C1C1E;
+   color: #FFFFFF;
+}
+.headerB{
+   background: #1C1C1E;
+   color: #FFFFFF;
+}
+.headerIcons{
+   background: #2c2c2d;
+   color: #FFFFFF;
+}
+.line{
+   background-color: #3A3A3C;
+}
+.btn-cancel{
+   color: #8E8E93;
+   background-color: rgba(120, 120, 128, 0.2);
+   backdrop-filter: blur(10px);
+}
+.btn-action{
+   color: var(--primary);
+}
+.action{
+   color: #8E8E93;
+}
+.pair{
+   background-color: rgba(120, 120, 128, 0.12);
+}
+.vLine{
+    background-color:#3A3A3C;
+}
+.single{
+   color: #8E8E93;
+}
+.del{
+    color: #FF453A;
+    background-color: rgba(255, 69, 58, 0.1);
+}
+.habito{
+    color: #FFFFFF;
+}
+#vUnitLabel{
+    color: #8E8E93;
+}
+/* Icon Picker Circle */
+
+.iconTrigger {
+    background: #2C2C2E;
+    color: #FFFFFF;
+}
+
+.iconItem {
+    color: hsl(240, 2%, 57%);
+}
+.iconItem.selected {
+    background: #30303099;
+    filter: brightness(0.95);
+    color: #FFFFFF;
+}
+
+.manualQtyInput {
+    color: #FFFFFF;
+}
+.manualQtyInput:focus {
+    background: #3A3A3C;
+    color: #FFFFFF;
+}
+.btn {
+    color: #8E8E93;
+}
+.plusminus{
+    color: #dedee9;
+    background-color: #3b3b3b;
+}
+.plusminus.clicked {
+    filter: brightness(0.95);
+}
+
+.btn-blue {
+    background: var(--primary);
+    font-weight: 550;
+    color: #111;
+}
+
+.btn-gray {
+    background: #2C2C2E;
+    color: var(--primary);
+    font-weight: 450;
+}
+
+.botoncito {
+    color: #222;
+}
+
+/* --- Calendar Pro Mejorado --- */
+
+.ring-bg {
+    stroke: #3A3A3C;
+}
+
+.dayNum {
+    color: #FFFFFF;
+}
+
+.habitName {
+    color: #FFFFFF;
+}
+.habitIconCircle {
+    background: transparent;
+}
+
+.heading{
+    color: #FFFFFF;
+}
+.habitInfo p {
+    color: var(--text-muted);
+}
+.habitCard {
+    background-color: #1c1c1b;
+}
+.habitCard.completed {
+    opacity: 0.5;
+    filter: contrast(0.9);
+}
+
+.habitTime{
+    color: rgba(255, 255, 255, 0.6);
+}
+.habitProgressBar {
+    background: #ffffff28;
+}
+.streak{
+    color: #FF9F0A;
+}
+.streaknum{
+    color: #FF9F0A;
+}
+#streakNumberInView{
+    color: #9e9ea4;
+}
+.habitProgressBadge {
+    font-weight: 550;
+}
+
+.habitProgressBarInner {
+    background: var(--primary);
+}
+
+header {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(12px);
+}
+
+.bigt {
+    color: #FFFFFF;
+}
+.field{
+    color: #FFFFFF;
+}
+.select{
+    color: #9e9ea4;
+}
+.label-table{
+    color: #8E8E93;
+}
+#create{
+   background-color: #1C1C1E;
+}
+.table{
+   background-color: #2C2C2E;
+}
+
+.row{
+   border-top: 0.9px solid #424245;
+}
+.row:first-child{
+   border-top: 1px transparent;
+}
+.colorPreview::after {
+    color: white;
+}
+.bar {
+  background: rgba(255, 255, 255, 0.05);
+}
+hr{
+    border: 0.8px solid #3A3A3C;
+}
+.fire{
+    color: #FF9F0A;
+}
+
+#streakValue{
+    color: #fff;
+}
+#streakText{
+    color: #FFFFFF;
+}
+.month{
+    background-color: #2C2C2E;
+}
+.navbtns{
+    background-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.6);
+}
+.subtitle{
+    color: #FFFFFF;
+}
+.search{
+    color: #919191;
+    font-weight: 440;
+}
+.searchBar{
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    gap: 5px;
+    border-radius: 10px;
+    border: none;
+    background: #323135;
+}
+#iconSearch {
+    width: 100%;
+    height: 100%;
+    border: none;
+    color: white;
+    background: transparent;
+    padding: 0;
+    font-size: 0.96rem;
+    font-family: 'sf';
+    transition: all 400ms ease; 
+    outline: none; 
+}
+#iconSearch::placeholder {
+    color: #a0a0a7;
+}
+.table2{
+   background-color: #1c1c1da2;
+}
+.iconsbg{
+    background-color: #1c1c1da2;
+}
+#iconPickerSheet{
+    background-color: #2c2c2d;
+}
+.iconCategory .categoryTitle {
+  color: #fff;
+}
+.btn-act{
+    color: var(--primary);
+}
+.diaCheck{
+    color: var(--primary);
+}
+/* ========== NUEVAS ADICIONES (sin eliminar nada) ========== */
+
+/* Overlay para oscurecer fondo */
+.sheet-overlay.active {
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+.topbar {
+    background: #000;
+}
+/* Toggle switch */
+.toggleSwitch {
+    background-color: #444448;
+}
+.toggleSwitch.active {
+    background-color: #68ce67;
+}
+.toggleKnob {
+    background-color: #FFFFFF;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Reorder list items (touch drag) */
+.reorderItem {
+    background: #2C2C2E;
+}
+.reorderName { color: #FFFFFF; }
+.reorderDragHandle { color: #8E8E93; }
+
+/* Add quantity sheet */
+.addQtyInput {
+    background: #2C2C2E;
+    color: #FFFFFF;
+}
+.addQtyBtn-primary { background: var(--primary); color: white; }
+.addQtyBtn-secondary { background: #3A3A3C; color: #FFFFFF; }
+
+/* Animaciones FLIP para las tarjetas (sin empujar el botón) */
+.habitCard.flip-move-down {
+    opacity: 0;
+}
+.habitCard.flip-move-up {
+    opacity: 0;
+}
+.btn-del{
+    color: var(--del);
+}
+.chevron{
+    color: #ffffff54;
+}
+}
+
+.lineChartContainer{
+    background-color:#ffffff;
+}

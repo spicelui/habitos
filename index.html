@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Hábitos - Principal</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#FFFFFF">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./style-dark.css">
+    <style>
+        /* Estilos adicionales para nuevos componentes */
+        .clear-field {
+            background: transparent;
+            border: none;
+            font-size: 1rem;
+            padding: 0 8px;
+            cursor: pointer;
+            color: #8e8e93;
+        }
+        .field-with-clear {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        .field-with-clear input {
+            flex: 1;
+        }
+        .history-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 0.5px solid #e9e9ef;
+        }
+        .history-date {
+            font-weight: 500;
+            font-size: 1rem;
+            color: #000;
+            margin: 0;
+            padding: 0;
+            text-align: left;
+        }
+        .history-time {
+            font-size: 0.8rem;
+            color: #8e8e93;
+        }
+        .history-amount {
+            font-weight: 460;
+            color: var(--primary);
+            margin-right: 20px;
+        }
+        .entry-count {
+            background: #f2f2f6;
+            border-radius: 20px;
+            padding: 8px 12px;
+            text-align: center;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+        .timer-display {
+            font-size: 4.2rem;
+            font-weight: 200;
+            text-align: center;
+            letter-spacing: -0.5px;
+            margin: 2rem 0;
+        }
+        .timer-controls {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin: 20px 0;
+        }
+        .interval-picker {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .interval-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div id="overlay" class="sheet-overlay"></div>
+
+<header>
+  <div class="topbar">
+    <div class="actionsbar">
+        <div class="btn-action" onclick="openHabitsManagement()">Editar</div>
+        <div class="settings-actions">
+            <button class="btn-act" id="settingsBtn">􀍟</button>
+            <button class="btn-act" id="addHabitBtn">􀁍</button>
+        </div>
+    </div>
+    <div class="bigt">Hábitos</div>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+        <div id="dateSelector">
+            <input type="date" id="selectedDate">
+        </div>
+    </div>
+  </div>
+</header>
+
+<main id="habitsContainer"></main>
+
+<!-- SHEET CREAR / EDITAR HÁBITO -->
+<div id="createSheet" class="sheetContent">
+   <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="handleCloseHabit()">Cancelar</button>
+            <div class="subtitle">Hábito</div>
+            <button class="btn-action" onclick="saveHabit()" style="font-weight: 560;">Guardar</button>
+        </div>
+    </div>
+
+    <div class="iconTrigger" id="iconPickerTrigger">􀓔</div>
+
+    <div class="form">
+        <div class="table">
+            <div class="row">
+                <div class="field-with-clear" style="width:100%">
+                    <input type="text" id="hName" class="field" style="font-weight: 520;" placeholder="Nombre del hábito">
+                    <button type="button" class="clear-field" id="clearHNameBtn" style="display:none;">􀁡</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="label-table">
+            Repeticiones
+        </div>
+        <div class="table">
+            <div class="row">
+                <span class="label">Objetivo</span>
+                <input type="number" id="hGoal" class="select" placeholder="Cantidad" inputmode="decimal" step="any">
+            </div>
+            <div class="row" style="cursor:pointer;" onclick="toggleIntervalEnabled()">
+                <span>Intervalos</span>
+                <div class="toggleSwitch" id="intervalToggle">
+                    <div class="toggleKnob"></div>
+                </div>
+            </div>
+            <div class="row" id="stepRow">
+                <span class="label">Aumento</span>
+                <input type="number" id="hStep" class="select" placeholder="Paso" inputmode="decimal" step="any">
+            </div>
+        </div>
+
+        <!-- Selector de unidades (normal o intervalos) -->
+        <div class="table" id="unitSelectRow">
+            <div class="row">
+                <span class="label">Unidad</span>
+                <select id="hUnitSelect" class="select"></select>
+            </div>
+        </div>
+        <!-- Selector de unidad para intervalos (minutos/horas) -->
+        <div class="table" id="intervalUnitRow" style="display: none;">
+            <div class="row">
+                <span class="label">Unidad de tiempo</span>
+                <select id="hIntervalUnitSelect" class="select">
+                    <option value="minutes">minutos</option>
+                    <option value="hours">horas</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="label-table">
+            horario
+        </div>
+        <div class="table" id="diasTable"></div>
+
+        <div class="table" id="hourTable">
+            <div class="row" style="cursor:pointer;" onclick="toggleHourEnabled()">
+                <span>Momento específico</span>
+                <div class="toggleSwitch" id="hourToggle">
+                    <div class="toggleKnob"></div>
+                </div>
+            </div>
+            <div class="row" id="timeRowContainer" style="display: none;">
+                <span class="label">Hora</span>
+                <input type="time" id="hTime" class="select">
+            </div>
+        </div>
+        <div class="label-table">
+            Otros detalles
+        </div>
+        <div class="table">
+            <div class="row">
+                <textarea id="hDescription" class="field" rows="6" placeholder="Descripción" style="width:100%; resize: none;"></textarea>
+            </div>
+        </div>
+
+        <div id="deleteHabitRow" class="table" style="margin-top: 16px; display: none;">
+            <div class="row" style="justify-content: center;">
+                <button onclick="deleteHabit()" class="btn-del">Eliminar</button>
+            </div>
+        </div>
+   </div>
+</div>
+
+<!-- SHEET VER HÁBITO -->
+<div id="viewSheet" class="sheetContent" style="text-align: center;">
+   <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="handleCloseHabit()">Cerrar</button>
+            <button class="btn-action" onclick="editHabit()">Editar</button>
+        </div>
+    </div>
+
+    <div class="form" id="view">
+        <div class="table" style="padding: 18px;">
+            <div id="vIcon"></div>
+            <div class="habito" id="vName"></div>
+            <div id="vDescription" style="font-size: 0.85rem; color: #666; margin: 4px 0 8px;"></div>
+            <div id="vUnitLabel"></div>
+
+            <div class="qtyControls" id="viewQtyControls">
+                <button class="plusminus" onclick="updateQty(-1)">􀅽</button>
+                <input type="number" id="vQtyManual" class="manualQtyInput" value="0" step="any">
+                <button class="plusminus" onclick="updateQty(1)">􀅼</button>
+            </div>
+            <!-- Botón para intervalos/temporizador -->
+            <div id="viewTimerButton" style="margin-top: 12px; display: none;">
+                <button class="btn btn-blue" onclick="openTimerSheet()">Temporizador</button>
+            </div>
+        </div>
+        
+        <div class="table" style="margin-top: 8px; cursor: pointer;" onclick="openStreak()">
+            <div class="row">
+                <div class="flex">
+                    <span class="row-icon" style="color: #ff9100;">􀙭</span>
+                    <span>Racha</span>
+                </div>
+                <div class="flex">
+                    <span id="streakNumberInView" class="flex row-value">0</span>
+                    <span class="chevron">􀆊</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="table" style="margin-top: 8px; cursor: pointer;" onclick="openHistorySheet()">
+            <div class="row">
+                <div class="flex">
+                    <span class="row-icon">􀻤</span>
+                    <span>Registros</span>
+                </div>
+                <div class="flex">
+                    <div class="flex row-value" id="historyEntryCount">0</div>
+                    <span class="chevron">􀆊</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="down">
+            <div class="btones" id="viewBottomButtons">
+                <button class="btn btn-gray" onclick="clearQty()">Vaciar</button>
+                <button class="btn btn-gray" onclick="openAddQuantitySheet()">Agregar</button>
+                <button class="btn btn-blue" onclick="setComplete()">Completar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SHEET HISTORIAL -->
+<div id="historySheet" class="sheetContent">
+    <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="closeSheet('historySheet')">Cerrar</button>
+            <div class="subtitle">Historial</div>
+            <div></div>
+        </div>
+    </div>
+    <div class="screen" style="padding: 0 16px;">
+        <div class="table">      
+            <div id="historyList"></div>
+        </div>
+    </div>
+</div>
+
+<!-- SHEET AGREGAR CANTIDAD (normal o intervalo) -->
+<div id="addQuantitySheet" class="sheetContent addQtySheet">
+    <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="closeSheet('addQuantitySheet')">Cancelar</button>
+            <div class="subtitle">Agregar cantidad</div>
+            <button class="btn-action" id="confirmAddBtn" onclick="confirmAddQuantity()">Añadir</button>
+        </div>
+    </div>
+    <div class="form">
+        <!-- Contenido numérico normal -->
+        <div id="addQtyNumeric">
+            <input type="number" id="addQtyInput" class="addQtyInput" placeholder="0" value="0" step="any" inputmode="decimal">
+        </div>
+        <!-- Contenido para intervalos (time pickers) -->
+        <div id="addQtyInterval" style="display: none;">
+            <div class="table">
+                <div class="row">
+                    <span>Inicio</span>
+                    <input class="select" type="time" id="intervalStart" step="1" value="00:00">
+                </div>
+                <div class="row">
+                    <span>Fin</span>
+                    <input class="select" type="time" id="intervalEnd" step="1" value="00:00">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ICON PICKER -->
+<div id="iconPickerSheet" class="sheetContent">
+    <div class="headerIcons">
+        <div class="duo">
+            <button class="btn-action" onclick="closeSheet('iconPickerSheet'); openSheet('createSheet');">Atrás</button>
+            <div class="subtitle">Icono</div>
+            <button class="btn-action" id="confirmIconBtn" style="font-weight: 560;">Aplicar</button>
+        </div>
+    </div>
+    <div class="content">
+        <div class="table2">
+            <div class="row">
+                <span class="label">Color de ícono</span>
+                <div class="colorPickerWrap">
+                    <input type="color" id="iconColorPicker" value="#007AFF">
+                    <div class="colorPreview" id="colorPreview" style="background:#007AFF;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="iconsbg">
+            <div class="searchBar">
+                <div class="search">􀊫</div>
+                <div class="field-with-clear" style="flex:1">
+                    <input type="text" id="iconSearch" placeholder="Buscar íconos" autocomplete="off" style="flex:1">
+                    <button type="button" class="clear-field" id="clearIconSearchBtn">􀁡</button>
+                </div>
+            </div>
+            <div id="iconGrid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- STREAK SHEET -->
+<div id="streakSheet" class="sheetContent">
+   <div class="headerB">
+        <div class="conjunto">
+            <button class="btn-action" onclick="closeSheet('streakSheet')">Cerrar</button>
+        </div>
+    </div>
+    <div class="screen">
+        <div class="streakBadge">
+            <div class="fire">􀙭</div>
+            <div id="streakValue">0</div>
+            <div id="streakText">Días de racha</div>
+        </div>
+        <hr>
+        <div class="subt">Actividad por mes</div>
+        <div class="month">
+            <div class="datenav">
+                <button class="navbtns" onclick="changeMonth(-1)">􀯶</button>
+                <div class="heading" id="calTitle"></div>
+                <button class="navbtns" onclick="changeMonth(1)">􀯻</button>
+            </div>
+            <div class="calGrid" id="calGrid"></div>
+        </div>
+        <div class="subt">Progreso semanal</div>
+        <div class="lineChartContainer">
+            <svg id="weeklyLineSvg" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; border-radius: 16px;"></svg>
+        </div>
+    </div>
+</div>
+
+<!-- SHEET CONFIGURACIÓN (modificada) -->
+<div id="settingsSheet" class="sheetContent">
+    <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="closeSheet('settingsSheet')">Cerrar</button>
+            <div class="subtitle">Configuración</div>
+            <div></div>
+        </div>
+    </div>
+    <div class="form">
+        <div class="table">
+            <div class="row" style="cursor:pointer;" onclick="openHabitsManagement()">
+                <span class="flex">
+                    <span class="row-icon">􀏭</span>
+                    Hábitos
+                </span>
+                <span class="chevron">􀆊</span>
+            </div>
+            <div class="row" style="cursor:pointer;" onclick="openUnitsSheet()">
+                <span class="flex">
+                    <span class="row-icon">􀟀</span>
+                    Unidades de medida
+                </span>
+                <span class="chevron">􀆊</span>
+            </div>
+        </div>
+        <div class="table">
+            <div class="row">
+                <span class="flex">
+                    <span class="row-icon">􀍟</span>
+                    Color de acento
+                </span>
+                <select id="accentPresetSelect" class="select" style="max-width: 50%;">
+                    <option value="default">Predeterminado</option>
+                    <option value="yellow">Amarillo</option>
+                    <option value="cyan">Cian</option>
+                    <option value="orange">Naranja</option>
+                    <option value="pink">Rosa</option>
+                    <option value="brown">Café</option>
+                    <optgroup label="Temas suaves">
+                        <option value="p1">Cloud</option>
+                        <option value="p3">Ocean</option>
+                        <option value="p4">Gold pink</option>
+                        <option value="p5">Lavender</option>
+                        <option value="p6">Green Tea</option>
+                        <option value="p7">Brick</option>
+                        <option value="p8">Apple</option>
+                    </optgroup>
+                    <option value="custom">Personalizado</option>
+                </select>
+            </div>
+        </div>
+        <div id="customAccentRows" style="display: none;">
+            <div class="table">
+                <div class="row">
+                    <span class="label">Acento en tema claro</span>
+                    <div class="colorPickerWrap" style="width: 32px; height: 32px;">
+                        <input type="color" id="accentLightPicker" value="#0076fa">
+                        <div class="colorPreview" style="background:#0076fa;"></div>
+                    </div>
+                </div>
+                <div class="row">
+                    <span class="label">Acento en modo oscuro</span>
+                    <div class="colorPickerWrap" style="width: 32px; height: 32px;">
+                        <input type="color" id="accentDarkPicker" value="#0076fa">
+                        <div class="colorPreview" style="background:#0076fa;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="table">
+            <div class="row" style="cursor:pointer;" onclick="exportData()">
+                <span class="flex">
+                    <span class="row-icon">􀤂</span>
+                    Crear copia de seguridad
+                </span>
+            </div>
+            <div class="row" style="cursor:pointer;" onclick="document.getElementById('importFileSettings').click()">
+                <span class="flex">
+                    <span class="row-icon">􀅉</span>
+                    Restaurar datos desde archivo
+                </span>
+            </div>
+            <input type="file" id="importFileSettings" style="display:none" accept=".json" onchange="importData(event)">
+        </div>
+        <div class="table">
+            <div class="row" style="color: var(--del);" onclick="confirmDeleteAllData()">
+                    Eliminar todos los datos
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SHEET GESTIÓN DE HÁBITOS (ELIMINAR) -->
+<div id="habitsManagementSheet" class="sheetContent">
+    <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="closeSheet('habitsManagementSheet')">Cerrar</button>
+            <div class="subtitle">Gestionar hábitos</div>
+            <div></div>
+        </div>
+    </div>
+    <div class="form">
+        <div id="habitsManagementList" class="table"></div>
+        <div class="table">
+            <div class="row" style="justify-content: center;">
+                <button onclick="deleteAllHabits()" class="btn-del">Borrar todos los hábitos</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SHEET UNIDADES -->
+<div id="unitsSheet" class="sheetContent">
+    <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="closeSheet('unitsSheet')">Cerrar</button>
+            <div class="subtitle">Unidades</div>
+            <button class="btn-action" onclick="openUnitEditSheet(null)">Agregar</button>
+        </div>
+    </div>
+    <div class="form">
+        <div id="unitsList" class="table"></div>
+    </div>
+</div>
+
+<!-- SHEET EDITAR UNIDAD -->
+<div id="unitEditSheet" class="sheetContent">
+    <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="closeSheet('unitEditSheet')">Cancelar</button>
+            <div class="subtitle">Editar unidad</div>
+            <button class="btn-action" onclick="saveUnit()">Guardar</button>
+        </div>
+    </div>
+    <div class="form">
+        <div class="table">
+            <div class="row">
+                <span class="label">Singular</span>
+                <input type="text" id="unitSingular" class="select" placeholder="Uno">
+            </div>
+            <div class="row">
+                <span class="label">Plural</span>
+                <input type="text" id="unitPlural" class="select" placeholder="Varios">
+            </div>
+        </div>
+        <div id="deleteUnitRow" class="table" style="margin-top: 16px; display: none;">
+            <div class="row" style="justify-content: center;">
+                <button onclick="deleteUnit()" class="btn-del">Eliminar unidad</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SHEET TEMPORIZADOR (INTERVALOS) -->
+<div id="timerSheet" class="sheetContent">
+    <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="closeTimerSheetWithoutSave()">Cancelar</button>
+            <div class="subtitle">Temporizador</div>
+            <button class="btn-action" onclick="saveTimerLog()">Guardar</button>
+        </div>
+    </div>
+    <div style="padding: 20px;">
+        <div class="timer-display" id="timerDisplay">00:00:00</div>
+        <div class="timer-controls">
+            <button class="btn btn-blue" id="timerStartPauseBtn">Iniciar</button>
+            <button class="btn btn-gray" id="timerStopBtn">Detener</button>
+        </div>
+        <div id="timerLogPreview" style="margin-top: 24px; text-align: center; font-size: 0.9rem; color: #666;"></div>
+    </div>
+</div>
+
+<script src="icons.js"></script>
+<script src="habits.js"></script>
+</body>
+</html>
