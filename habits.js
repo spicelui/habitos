@@ -9,7 +9,7 @@ let previousSheet = null;
 let zCounter = 1000;
 let ignoreNextClick = false;
 let hourEnabled = false;
-let intervalEnabled = false;  // para el formulario de creación/edición
+let intervalEnabled = false;
 
 // Configuración de color de acento (claro y oscuro)
 let accentLight = '#0076fa';
@@ -20,14 +20,94 @@ let timerInterval = null;
 let timerStartTime = null;
 let timerElapsedSeconds = 0;
 let timerRunning = false;
-let currentTimerLog = null; // { startTime, endTime, durationSeconds }
+let currentTimerLog = null;
 
-// Inicializar unidades por defecto (incluir minutos y horas para intervalos)
+// --- CONFIGURACIONES DE UI (solo ajustes) ---
+let uiSettings = {
+    fontFeatures: true,      // cv07, cv11
+    cardRadius: 26,          // px
+    timeSlots: false,        // separadores mañana/tarde/noche
+    time24h: true,           // true = 24h, false = 12h AM/PM
+    showIcons: true
+};
+
+// --- CONTROL DE SCROLL DENTRO DE UNA SHEET (HEADERB) ---
+let currentSheetScrollHandler = null;
+
+function setupSheetScrollListener(sheetElement) {
+    if (currentSheetScrollHandler) {
+        sheetElement.removeEventListener('scroll', currentSheetScrollHandler);
+    }
+    const headerB = sheetElement.querySelector('.headerB');
+    if (!headerB) return;
+    
+    const onScroll = () => {
+        if (sheetElement.scrollTop > 0) {
+            headerB.classList.add('minimized');
+        } else {
+            headerB.classList.remove('minimized');
+        }
+    };
+    
+    sheetElement.addEventListener('scroll', onScroll);
+    currentSheetScrollHandler = onScroll;
+}
+
+function removeSheetScrollListener(sheetElement) {
+    if (currentSheetScrollHandler) {
+        sheetElement.removeEventListener('scroll', currentSheetScrollHandler);
+        currentSheetScrollHandler = null;
+    }
+}
+
+// --- CONTROL DE SCROLL DEL TOPBAR PRINCIPAL ---
+function handleTopbarOnScroll() {
+    const topbar = document.querySelector('.topbar');
+    if (!topbar) return;
+    if (window.scrollY > 10) {
+        topbar.classList.add('minimized');
+    } else {
+        topbar.classList.remove('minimized');
+    }
+}
+
+// Inicializar unidades por defecto
 if (units.length === 0) {
     units = [
         { id: genId(), singular: 'vez', plural: 'veces' },
-        { id: genId(), singular: 'minuto', plural: 'minutos' },
-        { id: genId(), singular: 'hora', plural: 'horas' }
+        { id: genId(), singular: 'página', plural: 'págs' },
+        { id: genId(), singular: 'hora', plural: 'horas' },
+        { id: genId(), singular: 'minuto', plural: 'min' },
+        { id: genId(), singular: 'mm', plural: 'mm' },
+        { id: genId(), singular: 'cm', plural: 'cm' },
+        { id: genId(), singular: 'metro', plural: 'metros' },
+        { id: genId(), singular: 'km', plural: 'km' },
+        { id: genId(), singular: 'milla', plural: 'millas' },
+        { id: genId(), singular: 'yarda', plural: 'yardas' },
+        { id: genId(), singular: 'pie', plural: 'pies' },
+        { id: genId(), singular: 'pulgada', plural: 'pulgadas' },
+        { id: genId(), singular: 'cm²', plural: 'cm²' },
+        { id: genId(), singular: 'm²', plural: 'm²' },
+        { id: genId(), singular: 'km²', plural: 'km²' },
+        { id: genId(), singular: 'mL', plural: 'mL' },
+        { id: genId(), singular: 'L', plural: 'L' },
+        { id: genId(), singular: 'galón', plural: 'gal' },
+        { id: genId(), singular: 'taza', plural: 'tazas' },
+        { id: genId(), singular: 'cucharada', plural: 'cucharadas' },
+        { id: genId(), singular: 'mg', plural: 'mg' },
+        { id: genId(), singular: 'g', plural: 'g' },
+        { id: genId(), singular: 'dg', plural: 'dg' },
+        { id: genId(), singular: 'kg', plural: 'kg' },
+        { id: genId(), singular: 'lb', plural: 'lbs' },
+        { id: genId(), singular: 'oz', plural: 'ozs' },
+        { id: genId(), singular: 'caloría', plural: 'cal' },
+        { id: genId(), singular: 'kCal', plural: 'kCal' },
+        { id: genId(), singular: 'par', plural: 'pares' },
+        { id: genId(), singular: 'pieza', plural: 'pzs' },
+        { id: genId(), singular: 'unidad', plural: 'unidades' },
+        { id: genId(), singular: 'porcón', plural: 'porciones' },
+        { id: genId(), singular: 'docena', plural: 'docenas' },
+        { id: genId(), singular: '%', plural: '%' }
     ];
     localStorage.setItem('units', JSON.stringify(units));
 } else {
@@ -67,14 +147,13 @@ function migrateHabits() {
 }
 migrateHabits();
 
-// --- PERSONALIZACIÓN DE COLOR (claro/oscuro) en tiempo real ---
+// --- PERSONALIZACIÓN DE COLOR ---
 function loadAccentColors() {
     const savedLight = localStorage.getItem('accentLight');
     const savedDark = localStorage.getItem('accentDark');
     if (savedLight) accentLight = savedLight;
     if (savedDark) accentDark = savedDark;
     applyTheme();
-    // Sincronizar selects si la hoja está abierta
     const presetSelect = document.getElementById('accentPresetSelect');
     if (presetSelect) {
         let preset = 'custom';
@@ -107,7 +186,6 @@ function setAccentColors(light, dark) {
     applyTheme();
 }
 
-// Escuchar cambios del sistema (modo claro/oscuro)
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme());
 
 function initAccentPicker() {
@@ -157,7 +235,6 @@ function initAccentPicker() {
             customRows.style.display = 'block';
         });
     }
-    // Inicializar la vista previa de los color pickers (círculos)
     if (lightPicker && darkPicker) {
         const lightWrap = lightPicker.closest('.colorPickerWrap');
         const darkWrap = darkPicker.closest('.colorPickerWrap');
@@ -180,7 +257,6 @@ function getUnitById(unitId) {
     return units.find(u => u.id === unitId) || units[0];
 }
 function formatQuantity(amount) {
-    // Muestra entero si no hay decimales, o 1 decimal si es necesario
     return amount % 1 === 0 ? amount.toString() : amount.toFixed(1);
 }
 
@@ -191,163 +267,32 @@ function updateOverlay() {
     else overlay.classList.remove('active');
 }
 
-// --- INICIALIZACIÓN ---
-document.addEventListener('DOMContentLoaded', () => {
-    loadAccentColors();
-    initAccentPicker();
-    const dateInput = document.getElementById('selectedDate');
-    if (dateInput) {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        dateInput.value = `${yyyy}-${mm}-${dd}`;
-        selectedDate = dateInput.value;
-        dateInput.onchange = (e) => { selectedDate = e.target.value; renderHabits(); };
-    }
-    const iconSearch = document.getElementById('iconSearch');
-    if (iconSearch) iconSearch.addEventListener('input', (e) => initIcons(e.target.value));
-    document.getElementById('clearHNameBtn')?.addEventListener('click', () => {
-        document.getElementById('hName').value = '';
-        document.getElementById('clearHNameBtn').style.display = 'none';
-    });
-    document.getElementById('hName')?.addEventListener('input', (e) => {
-        document.getElementById('clearHNameBtn').style.display = e.target.value ? 'block' : 'none';
-    });
-    document.getElementById('clearIconSearchBtn')?.addEventListener('click', () => {
-        document.getElementById('iconSearch').value = '';
-        initIcons('');
-    });
-    initDiasSelector();
-    initIcons();
-    renderHabits();
-    populateUnitSelect();
-    const toggleDiv = document.getElementById('hourToggle');
-    if (toggleDiv) toggleDiv.addEventListener('click', (e) => { e.stopPropagation(); toggleHourEnabled(); });
-    document.getElementById('settingsBtn')?.addEventListener('click', () => openSheet('settingsSheet'));
-    document.getElementById('intervalToggle')?.addEventListener('click', (e) => { e.stopPropagation(); toggleIntervalForm(); });
-    // Timer sheet buttons
-    document.getElementById('timerStartPauseBtn')?.addEventListener('click', timerStartPause);
-    document.getElementById('timerStopBtn')?.addEventListener('click', timerStop);
-});
-
-function populateUnitSelect() {
-    const select = document.getElementById('hUnitSelect');
-    if (!select) return;
-    select.innerHTML = '';
-    units.forEach(unit => {
-        const option = document.createElement('option');
-        option.value = unit.id;
-        option.textContent = `${unit.plural}`;
-        select.appendChild(option);
-    });
-}
-function populateIntervalUnitSelect() {
-    const select = document.getElementById('hIntervalUnitSelect');
-    if (!select) return;
-    select.innerHTML = '';
-    select.innerHTML += `<option value="minutes">minutos</option>`;
-    select.innerHTML += `<option value="hours">horas</option>`;
-}
-
-// --- SELECTOR DE DÍAS ---
-let diasSeleccionados = [0,1,2,3,4,5,6];
-const nombresDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-function initDiasSelector() {
-    const container = document.getElementById('diasTable');
-    if (!container) return;
-    container.innerHTML = '';
-    for (let i = 0; i < 7; i++) {
-        const row = document.createElement('div');
-        row.className = 'row diasRow';
-        row.dataset.dia = i;
-        row.style.cursor = 'pointer';
-        row.innerHTML = `<span>${nombresDias[i]}</span><span class="diaCheck">${diasSeleccionados.includes(i) ? '􀆅' : ''}</span>`;
-        row.addEventListener('click', (e) => { e.preventDefault(); toggleDia(i); });
-        container.appendChild(row);
-    }
-}
-function toggleDia(dia) {
-    if (diasSeleccionados.includes(dia)) diasSeleccionados = diasSeleccionados.filter(d => d !== dia);
-    else { diasSeleccionados.push(dia); diasSeleccionados.sort((a,b)=>a-b); }
-    actualizarUIDias();
-}
-function actualizarUIDias() {
-    document.querySelectorAll('#diasTable .diasRow').forEach(row => {
-        const dia = parseInt(row.dataset.dia);
-        const checkSpan = row.querySelector('.diaCheck');
-        checkSpan.textContent = diasSeleccionados.includes(dia) ? '􀆅' : '';
-    });
-}
-
-// --- EXPORTAR/IMPORTAR ---
-function exportData() {
-    const data = { habits, units };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `habitos_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-function importData(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const imported = JSON.parse(e.target.result);
-            if (confirm('¿Reemplazar todos los datos actuales?')) {
-                if (imported.habits) habits = imported.habits;
-                if (imported.units) units = imported.units;
-                localStorage.setItem('habits', JSON.stringify(habits));
-                localStorage.setItem('units', JSON.stringify(units));
-                migrateHabits();
-                renderHabits();
-                populateUnitSelect();
-                alert('Datos importados');
-                closeSheet('settingsSheet');
-            }
-        } catch (err) { alert('Archivo inválido'); }
-    };
-    reader.readAsText(file);
-}
-function confirmDeleteAllData() {
-    if (confirm('⚠️ Esto eliminará TODOS los hábitos y unidades. ¿Continuar?')) {
-        habits = [];
-        units = [{ id: genId(), singular: 'vez', plural: 'veces' }];
-        localStorage.setItem('habits', '[]');
-        localStorage.setItem('units', JSON.stringify(units));
-        renderHabits();
-        populateUnitSelect();
-        closeSheet('settingsSheet');
-    }
-}
-
-// --- SHEETS CON OVERLAY (MODIFICADO: siempre scroll arriba al abrir) ---
+// --- SHEETS CON OVERLAY ---
 function openSheet(id) {
     if (activeSheet === id) return;
     ignoreNextClick = true;
     const content = document.getElementById(id);
     if (!content) return;
+
     if (activeSheet) {
         const old = document.getElementById(activeSheet);
         old.classList.remove('active');
         setTimeout(() => { if (activeSheet !== id) old.style.display = 'none'; }, 400);
+        removeSheetScrollListener(old);
     }
     previousSheet = activeSheet;
     activeSheet = id;
     zCounter++;
     content.style.display = 'block';
     content.style.zIndex = zCounter;
-    // Forzar scroll al inicio de la hoja
     content.scrollTop = 0;
-    requestAnimationFrame(() => content.classList.add('active'));
+    requestAnimationFrame(() => {
+        content.classList.add('active');
+        setupSheetScrollListener(content);
+    });
     updateOverlay();
 }
+
 function closeSheet(id = activeSheet, cb = null) {
     const content = document.getElementById(id);
     if (!content || content.classList.contains('closing')) return;
@@ -355,6 +300,9 @@ function closeSheet(id = activeSheet, cb = null) {
     content.classList.remove('active');
     content.classList.add('closing');
     if (id === activeSheet) activeSheet = null;
+    
+    removeSheetScrollListener(content);
+
     setTimeout(() => {
         content.style.display = 'none';
         content.classList.remove('closing');
@@ -362,6 +310,7 @@ function closeSheet(id = activeSheet, cb = null) {
         updateOverlay();
     }, 400);
 }
+
 document.addEventListener('click', (e) => {
     if (ignoreNextClick || !activeSheet) return;
     const sheetEl = document.getElementById(activeSheet);
@@ -491,7 +440,181 @@ function initIcons(filter = "") {
     }
 }
 
-// --- RENDER HÁBITOS ---
+// --- FUNCIONES DE UI SETTINGS ---
+function loadUISettings() {
+    const saved = localStorage.getItem('uiSettings');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            uiSettings = { ...uiSettings, ...parsed };
+        } catch(e) {}
+    }
+    applyFontFeatures();
+    applyCardRadius();
+    applyTimeFormatToggleUI();
+    applyShowIconsToggleUI();
+    applyTimeSlotsToggleUI();
+    const radiusInput = document.getElementById('cardRadiusInput');
+    if (radiusInput) {
+        radiusInput.value = uiSettings.cardRadius;
+        radiusInput.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (!isNaN(val)) {
+                uiSettings.cardRadius = val;
+                saveUISettings();
+                applyCardRadius();
+            }
+        });
+    }
+}
+
+function saveUISettings() {
+    localStorage.setItem('uiSettings', JSON.stringify(uiSettings));
+}
+
+function applyFontFeatures() {
+    if (uiSettings.fontFeatures) {
+        document.body.classList.add('font-features');
+    } else {
+        document.body.classList.remove('font-features');
+    }
+    const toggle = document.getElementById('fontFeaturesToggle');
+    if (toggle) {
+        if (uiSettings.fontFeatures) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+function applyCardRadius() {
+    document.documentElement.style.setProperty('--card-radius', uiSettings.cardRadius + 'px');
+}
+
+function applyShowIconsToggleUI() {
+    const toggle = document.getElementById('showIconsToggle');
+    if (toggle) {
+        if (uiSettings.showIcons) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+function applyTimeSlotsToggleUI() {
+    const toggle = document.getElementById('timeSlotsToggle');
+    if (toggle) {
+        if (uiSettings.timeSlots) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+function applyTimeFormatToggleUI() {
+    const toggle = document.getElementById('timeFormatToggle');
+    if (toggle) {
+        if (!uiSettings.time24h) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+function toggleFontFeatures() {
+    uiSettings.fontFeatures = !uiSettings.fontFeatures;
+    saveUISettings();
+    applyFontFeatures();
+}
+
+function toggleShowIcons() {
+    uiSettings.showIcons = !uiSettings.showIcons;
+    saveUISettings();
+    applyShowIconsToggleUI();
+    renderHabits();
+}
+
+function toggleTimeSlots() {
+    uiSettings.timeSlots = !uiSettings.timeSlots;
+    saveUISettings();
+    applyTimeSlotsToggleUI();
+    renderHabits();
+}
+
+function toggleTimeFormat() {
+    uiSettings.time24h = !uiSettings.time24h;
+    saveUISettings();
+    applyTimeFormatToggleUI();
+    renderHabits();
+    if (activeSheet === 'viewSheet' && currentHabitId) {
+        openViewById(currentHabitId);
+    }
+    if (activeSheet === 'historySheet') openHistorySheet();
+}
+
+function resetOnlySettings() {
+    if (confirm('Restablecer solo la configuración de apariencia y organización? (No se perderán hábitos ni unidades)')) {
+        uiSettings = {
+            fontFeatures: true,
+            cardRadius: 26,
+            timeSlots: false,
+            time24h: true,
+            showIcons: true
+        };
+        saveUISettings();
+        applyFontFeatures();
+        applyCardRadius();
+        applyShowIconsToggleUI();
+        applyTimeSlotsToggleUI();
+        applyTimeFormatToggleUI();
+        const radiusInput = document.getElementById('cardRadiusInput');
+        if (radiusInput) radiusInput.value = 26;
+        renderHabits();
+        if (activeSheet === 'viewSheet' && currentHabitId) openViewById(currentHabitId);
+        if (activeSheet === 'historySheet') openHistorySheet();
+    }
+}
+
+// --- Formateo de hora según preferencia ---
+function formatTimeByPreference(time24) {
+    if (!time24) return '';
+    if (uiSettings.time24h) return time24;
+    let [hours, minutes] = time24.split(':');
+    let h = parseInt(hours, 10);
+    let ampm = h >= 12 ? 'PM' : 'AM';
+    let h12 = h % 12;
+    if (h12 === 0) h12 = 12;
+    return `${h12}:${minutes} ${ampm}`;
+}
+
+// --- RENDER HÁBITOS (con agrupación por momentos y ocultar íconos) ---
+function getHabitCardHTML(h) {
+    const unit = h.isInterval ? (h.intervalUnit === 'hours' ? 'horas' : 'minutos') : getUnitById(h.unitId).plural;
+    const qty = h.history[selectedDate] || 0;
+    const isComplete = qty >= h.goal;
+    const progress = Math.min(100, (qty / h.goal) * 100);
+    let buttonAction, buttonLabel, buttonStyle;
+    if (h.isInterval) {
+        buttonAction = `openAddQuantitySheetById('${h.id}')`;
+        buttonLabel = isComplete ? '􀆅' : '􀅼';
+        buttonStyle = `background-color: ${isComplete ? h.iconColor + '70' : h.iconColor}`;
+    } else {
+        buttonAction = `updateQtyById('${h.id}', 1)`;
+        buttonLabel = isComplete ? '􀆅' : '􀅼';
+        buttonStyle = `background-color: ${isComplete ? h.iconColor + '70' : h.iconColor }`;
+    }
+    const qtyDisplay = formatQuantity(qty);
+    const goalDisplay = formatQuantity(h.goal);
+    const displayTime = h.time ? formatTimeByPreference(h.time) : '';
+    const iconHtml = uiSettings.showIcons ? `<div class="habitIconCircle" style="color: ${h.iconColor}">${h.icon}</div>` : '';
+    return `<div class="habitCard ${isComplete ? 'completed' : ''}" data-id="${h.id}" onclick="openViewById('${h.id}')">
+        <div class="supcard">
+            ${iconHtml}
+            <div class="habitInfo">
+                <div class="details">
+                    <div class="dup"><div class="habitName">${h.name}</div></div>
+                    ${displayTime ? `<div class="habitTime">${displayTime}</div>` : ''}
+                    ${h.goal > 1 ? `<div class="progress"><div class="habitProgressBar"><div class="habitProgressBarInner" data-w="${progress}%" style="width: ${progress}%; background: ${h.iconColor};"></div></div></div>` : ''}
+                    ${h.goal > 1 && qty > 0 && qty !== h.goal ? `<div class="habitProgressBadge" style="color: ${h.iconColor}"><div class="cantidad"><div class="hecho">${qtyDisplay} ${unit}</div><div class="meta">${goalDisplay} ${unit}</div></div></div>` : ''}
+                </div>
+            </div>
+            <button class="botoncito" style="${buttonStyle}" onclick="event.stopPropagation(); ${buttonAction}">${buttonLabel}</button>
+        </div>
+    </div>`;
+}
+
 function renderHabits(updatedId = null, animate = false, wasComplete = null, isComplete = null) {
     const container = document.getElementById('habitsContainer');
     if (!container) return;
@@ -512,7 +635,38 @@ function renderHabits(updatedId = null, animate = false, wasComplete = null, isC
         if (ca !== cb) return ca ? 1 : -1;
         return (a.time || "99:99").localeCompare(b.time || "99:99");
     });
-    container.innerHTML = sorted.length ? sorted.map(h => getHabitCardHTML(h)).join('') : `<div style="text-align:center; color:#8e8e93; margin-top:40px;">No hay hábitos para hoy</div>`;
+
+    if (!uiSettings.timeSlots) {
+        container.innerHTML = sorted.length ? sorted.map(h => getHabitCardHTML(h)).join('') : `<div style="text-align:center; color:#8e8e93; margin-top:40px;">No hay hábitos para hoy</div>`;
+    } else {
+        const slots = {
+            morning: { label: '🌅 Mañana', habits: [], order: 1, filter: t => t && t < "12:00" },
+            noon: { label: '☀️ Mediodía', habits: [], order: 2, filter: t => t && t >= "12:00" && t < "14:00" },
+            afternoon: { label: '🌤️ Tarde', habits: [], order: 3, filter: t => t && t >= "14:00" && t < "18:00" },
+            night: { label: '🌙 Noche', habits: [], order: 4, filter: t => t && t >= "18:00" }
+        };
+        for (let h of sorted) {
+            const time = h.time || "";
+            let placed = false;
+            for (let [key, slot] of Object.entries(slots)) {
+                if (slot.filter(time)) {
+                    slot.habits.push(h);
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) slots.morning.habits.push(h);
+        }
+        let html = '';
+        for (let slot of Object.values(slots).sort((a,b)=>a.order-b.order)) {
+            if (slot.habits.length) {
+                html += `<div class="label-table" style="margin: 16px 0 4px 8px;">${slot.label}</div>`;
+                html += slot.habits.map(h => getHabitCardHTML(h)).join('');
+            }
+        }
+        container.innerHTML = html || `<div style="text-align:center; color:#8e8e93; margin-top:40px;">No hay hábitos para hoy</div>`;
+    }
+
     if (animate && updatedId && oldRect) {
         const newCard = document.querySelector(`.habitCard[data-id="${updatedId}"]`);
         if (newCard) {
@@ -543,41 +697,10 @@ function renderHabits(updatedId = null, animate = false, wasComplete = null, isC
             bar.style.width = bar.dataset.w;
         });
     });
-}
-function getHabitCardHTML(h) {
-    const unit = h.isInterval ? (h.intervalUnit === 'hours' ? 'horas' : 'minutos') : getUnitById(h.unitId).plural;
-    const qty = h.history[selectedDate] || 0;
-    const isComplete = qty >= h.goal;
-    const progress = Math.min(100, (qty / h.goal) * 100);
-    let buttonAction, buttonLabel, buttonStyle;
-    if (h.isInterval) {
-        buttonAction = `openAddQuantitySheetById('${h.id}')`;
-        buttonLabel = isComplete ? '􀆅' : '􀅼';
-        buttonStyle = `background-color: ${isComplete ? h.iconColor + '70' : h.iconColor}`;
-    } else {
-        buttonAction = `updateQtyById('${h.id}', 1)`;
-        buttonLabel = isComplete ? '􀆅' : '􀅼';
-        buttonStyle = `background-color: ${isComplete ? h.iconColor + '70' : h.iconColor}`;
-    }
-    const qtyDisplay = formatQuantity(qty);
-    const goalDisplay = formatQuantity(h.goal);
-    return `<div class="habitCard ${isComplete ? 'completed' : ''}" data-id="${h.id}" onclick="openViewById('${h.id}')">
-        <div class="supcard">
-            <div class="habitIconCircle" style="color: ${h.iconColor}">${h.icon}</div>
-            <div class="habitInfo">
-                <div class="details">
-                    <div class="dup"><div class="habitName">${h.name}</div></div>
-                    ${h.time ? `<div class="habitTime">${h.time}</div>` : ''}
-                    ${h.goal > 1 ? `<div class="progress"><div class="habitProgressBar"><div class="habitProgressBarInner" data-w="${progress}%" style="width: ${progress}%; background: ${h.iconColor};"></div></div></div>` : ''}
-                    ${h.goal > 1 && qty > 0 && qty !== h.goal ? `<div class="habitProgressBadge" style="color: ${h.iconColor}"><div class="cantidad"><div class="hecho">${qtyDisplay} ${unit}</div><div class="meta">${goalDisplay} ${unit}</div></div></div>` : ''}
-                </div>
-            </div>
-            <button class="botoncito" style="${buttonStyle}" onclick="event.stopPropagation(); ${buttonAction}">${buttonLabel}</button>
-        </div>
-    </div>`;
+    updateLongestStreakDisplay();
 }
 
-// --- LOGS (con soporte para intervalos) ---
+// --- LOGS ---
 function addLog(habitId, amount, dateStr, timeStr, extra = null) {
     const habit = habits.find(h => h.id === habitId);
     if (!habit || amount <= 0) return;
@@ -610,11 +733,12 @@ function openHistorySheet() {
     sorted.forEach(log => {
         let amountText = `${formatQuantity(log.amount)} ${unit}`;
         if (habit.isInterval && log.startTime && log.endTime) {
-            amountText = `${log.startTime} - ${log.endTime} (${formatDuration(log.durationSeconds)})`;
+            amountText = `${formatDuration(log.durationSeconds)}`;
         }
+        const displayTime = log.time ? formatTimeByPreference(log.time) : '';
         const row = document.createElement('div');
-        row.className = 'history-row';
-        row.innerHTML = `<div><div class="history-date">${log.date}</div><div class="history-time">${log.time || ''}</div></div><div class="history-amount">${amountText}</div>`;
+        row.className = 'row';
+        row.innerHTML = `<div><div class="history-date">${log.date}</div><div class="history-time">${displayTime}</div></div><div class="history-amount">${amountText}</div>`;
         container.appendChild(row);
     });
     openSheet('historySheet');
@@ -674,6 +798,22 @@ function openView(habit) {
             if (completeBtn) completeBtn.style.display = 'block';
         }
     }
+    let existingTimeElem = document.getElementById('vTimeDisplay');
+    if (!existingTimeElem && habit.time) {
+        const descDiv = document.getElementById('vDescription');
+        const timeDiv = document.createElement('div');
+        timeDiv.id = 'vTimeDisplay';
+        timeDiv.style.fontSize = '0.85rem';
+        timeDiv.style.color = '#666';
+        timeDiv.style.margin = '4px 0 8px';
+        descDiv.parentNode.insertBefore(timeDiv, descDiv.nextSibling);
+        existingTimeElem = timeDiv;
+    }
+    if (habit.time && existingTimeElem) {
+        existingTimeElem.textContent = formatTimeByPreference(habit.time);
+    } else if (existingTimeElem && !habit.time) {
+        existingTimeElem.remove();
+    }
     openSheet('viewSheet');
 }
 function saveHabit() {
@@ -687,7 +827,7 @@ function saveHabit() {
     let unitId, isInterval, intervalUnit;
     if (intervalEnabled) {
         isInterval = true;
-        intervalUnit = document.getElementById('hIntervalUnitSelect').value; // 'minutes' o 'hours'
+        intervalUnit = document.getElementById('hIntervalUnitSelect').value;
         const targetUnit = intervalUnit === 'hours' ? units.find(u => u.singular === 'hora') : units.find(u => u.singular === 'minuto');
         unitId = targetUnit ? targetUnit.id : units[0].id;
     } else {
@@ -752,15 +892,12 @@ function clearQty() {
     if (!currentHabitId) return;
     const h = habits.find(h => h.id === currentHabitId);
     if (!h) return;
-    // Borrar los logs de esta fecha
     deleteLogsForDate(currentHabitId, selectedDate);
-    // Poner el contador a cero
     h.history[selectedDate] = 0;
     localStorage.setItem('habits', JSON.stringify(habits));
     document.getElementById('vQtyManual').value = 0;
     renderHabits(h.id, true);
     document.getElementById('streakNumberInView').textContent = `${getStreak(h)} días`;
-    // Actualizar el contador de registros del mes (en la vista)
     const logs = h.logs || [];
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -770,7 +907,6 @@ function clearQty() {
         return parseInt(y) === currentYear && parseInt(m)-1 === currentMonth;
     }).length;
     document.getElementById('historyEntryCount').innerText = monthEntries;
-    // Cerrar la hoja después de vaciar
     closeSheet('viewSheet');
 }
 function setComplete() {
@@ -781,17 +917,15 @@ function setComplete() {
     const needed = h.goal - oldQty;
     if (needed <= 0) return;
     if (h.isInterval) {
-        // Para intervalos, añadir la cantidad restante (en minutos u horas)
         h.history[selectedDate] = h.goal;
         const now = new Date();
         const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
-        addLog(currentHabitId, needed, selectedDate, timeStr); // sin extra
+        addLog(currentHabitId, needed, selectedDate, timeStr);
         localStorage.setItem('habits', JSON.stringify(habits));
         document.getElementById('vQtyManual').value = h.goal;
         renderHabits(h.id, true, false, true);
         document.getElementById('streakNumberInView').textContent = `${getStreak(h)} días`;
     } else {
-        // Modo normal
         h.history[selectedDate] = h.goal;
         const now = new Date();
         const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
@@ -836,7 +970,8 @@ function updateIntervalPreview() {
     let endSec = timeToSeconds(end);
     if (endSec < startSec) endSec += 24*3600;
     const diffSec = endSec - startSec;
-    preview.textContent = `Duración: ${formatDuration(diffSec)}`;
+    const previewDiv = document.getElementById('timerLogPreview');
+    if (previewDiv) previewDiv.textContent = `Duración: ${formatDuration(diffSec)}`;
 }
 function timeToSeconds(time) {
     const [h,m,s = 0] = time.split(':').map(Number);
@@ -887,7 +1022,7 @@ function confirmAddQuantity() {
     }
 }
 
-// --- RACHA (con decimales) ---
+// --- RACHA ---
 function getStreak(h) {
     let streak = 0;
     let curr = new Date();
@@ -905,7 +1040,51 @@ function getStreak(h) {
     return streak;
 }
 
-// --- CALENDARIO Y GRÁFICO (con decimales) ---
+// --- RACHA MÁS LARGA GLOBAL ---
+function getLongestStreakForHabit(habit) {
+    let maxStreak = 0;
+    let currentStreak = 0;
+    let dates = Object.keys(habit.history).sort();
+    if (dates.length === 0) return 0;
+    let prevDate = null;
+    for (let date of dates) {
+        let qty = habit.history[date] || 0;
+        let isComplete = qty >= habit.goal - 1e-9;
+        if (isComplete) {
+            if (prevDate) {
+                let diff = (new Date(date) - new Date(prevDate)) / (1000*3600*24);
+                if (diff === 1) currentStreak++;
+                else currentStreak = 1;
+            } else {
+                currentStreak = 1;
+            }
+            if (currentStreak > maxStreak) maxStreak = currentStreak;
+        } else {
+            currentStreak = 0;
+        }
+        prevDate = date;
+    }
+    return maxStreak;
+}
+
+function getGlobalLongestStreak() {
+    let globalMax = 0;
+    for (let habit of habits) {
+        let streak = getLongestStreakForHabit(habit);
+        if (streak > globalMax) globalMax = streak;
+    }
+    return globalMax;
+}
+
+function updateLongestStreakDisplay() {
+    const span = document.getElementById('longestStreakDisplay');
+    if (span) {
+        const longest = getGlobalLongestStreak();
+        span.textContent = `${longest} ${longest === 1 ? 'día' : 'días'}`;
+    }
+}
+
+// --- CALENDARIO Y GRÁFICO ---
 let calDate = new Date();
 function openStreak() {
     const habit = habits.find(h => h.id === currentHabitId);
@@ -1094,7 +1273,54 @@ function editHabit() {
 }
 function handleCloseHabit() { closeSheet(activeSheet); }
 
-// --- TIMER SHEET (CON VISTA PREVIA COMO FILA DE HISTORIAL) ---
+// --- EXPORTAR / IMPORTAR / BORRAR DATOS ---
+function exportData() {
+    const data = { habits, units };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `habitos_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const imported = JSON.parse(e.target.result);
+            if (confirm('¿Reemplazar todos los datos actuales?')) {
+                if (imported.habits) habits = imported.habits;
+                if (imported.units) units = imported.units;
+                localStorage.setItem('habits', JSON.stringify(habits));
+                localStorage.setItem('units', JSON.stringify(units));
+                migrateHabits();
+                renderHabits();
+                populateUnitSelect();
+                alert('Datos importados correctamente');
+                closeSheet('settingsSheet');
+            }
+        } catch (err) { alert('Archivo inválido'); }
+    };
+    reader.readAsText(file);
+}
+function confirmDeleteAllData() {
+    if (confirm('⚠️ Esto eliminará TODOS los hábitos y unidades. ¿Continuar?')) {
+        habits = [];
+        units = [{ id: genId(), singular: 'vez', plural: 'veces' }];
+        localStorage.setItem('habits', '[]');
+        localStorage.setItem('units', JSON.stringify(units));
+        renderHabits();
+        populateUnitSelect();
+        closeSheet('settingsSheet');
+    }
+}
+
+// --- TIMER SHEET ---
 function openTimerSheet() {
     if (!currentHabitId) return;
     const habit = habits.find(h => h.id === currentHabitId);
@@ -1105,9 +1331,8 @@ function openTimerSheet() {
     timerElapsedSeconds = 0;
     timerRunning = false;
     currentTimerLog = null;
-    document.getElementById('timerDisplay').innerText = '00:00:00';
+    document.getElementById('timerDisplay').innerText = '00:00';
     document.getElementById('timerStartPauseBtn').innerText = 'Iniciar';
-    document.getElementById('timerLogPreview').innerHTML = '';
     openSheet('timerSheet');
 }
 function timerStartPause() {
@@ -1129,47 +1354,10 @@ function timerStartPause() {
         const elapsedPartial = Math.floor((endPartial - timerStartTime) / 1000);
         timerElapsedSeconds = elapsedPartial;
         updateTimerDisplay();
-        const startStr = currentTimerLog.startTime;
-        const endStr = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-        currentTimerLog.endTime = endStr;
-        currentTimerLog.durationSeconds = timerElapsedSeconds;
-        const previewDiv = document.getElementById('timerLogPreview');
-        previewDiv.innerHTML = `
-            <div class="history-row">
-                <div><div class="history-date">${new Date().toLocaleDateString()}</div><div class="history-time">${startStr} - ${endStr}</div></div>
-                <div class="history-amount">${formatDuration(timerElapsedSeconds)}</div>
-            </div>
-        `;
-    }
-}
-function timerStop() {
-    if (timerRunning) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-        timerRunning = false;
-    }
-    const endTime = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-    if (currentTimerLog && currentTimerLog.startTime) {
-        currentTimerLog.endTime = endTime;
-        if (timerElapsedSeconds === 0 && timerStartTime) {
-            timerElapsedSeconds = Math.floor((Date.now() - timerStartTime) / 1000);
-        } else if (timerElapsedSeconds === 0 && !timerStartTime) {
-            return;
+        if (currentTimerLog) {
+            currentTimerLog.endTime = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+            currentTimerLog.durationSeconds = timerElapsedSeconds;
         }
-        currentTimerLog.durationSeconds = timerElapsedSeconds;
-        const previewDiv = document.getElementById('timerLogPreview');
-        previewDiv.innerHTML = `
-        
-            <div class="table">
-                <div class="history-row">
-                    <div><div class="history-date">${new Date().toLocaleDateString()}</div><div class="history-time">${currentTimerLog.startTime} - ${endTime}</div></div>
-                    <div class="history-amount">${formatDuration(timerElapsedSeconds)}</div>
-                </div>
-            </div>
-        `;
-        document.getElementById('timerStartPauseBtn').innerText = 'Iniciar';
-        timerStartTime = null;
-        timerRunning = false;
     }
 }
 function updateTimerDisplay() {
@@ -1225,25 +1413,154 @@ function closeTimerSheetWithoutSave() {
     closeSheet('timerSheet');
 }
 
-// --- EVENTOS GLOBALES ---
-document.getElementById('addHabitBtn')?.addEventListener('click', () => { resetCreateForm(); openSheet('createSheet'); });
-iconTrigger?.addEventListener('click', () => openSheet('iconPickerSheet'));
-document.getElementById('confirmIconBtn')?.addEventListener('click', () => {
-    const active = document.querySelector('.iconItem.selected');
-    if (active) selectedIcon = active.innerText;
-    iconTrigger.innerText = selectedIcon;
-    closeSheet('iconPickerSheet', () => openSheet('createSheet'));
+// --- INICIALIZACIÓN ---
+document.addEventListener('DOMContentLoaded', () => {
+    loadAccentColors();
+    initAccentPicker();
+    const dateInput = document.getElementById('selectedDate');
+    if (dateInput) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        selectedDate = dateInput.value;
+        dateInput.onchange = (e) => { selectedDate = e.target.value; renderHabits(); };
+    }
+    const iconSearch = document.getElementById('iconSearch');
+    if (iconSearch) iconSearch.addEventListener('input', (e) => initIcons(e.target.value));
+    document.getElementById('clearHNameBtn')?.addEventListener('click', () => {
+        document.getElementById('hName').value = '';
+        document.getElementById('clearHNameBtn').style.display = 'none';
+    });
+    document.getElementById('hName')?.addEventListener('input', (e) => {
+        document.getElementById('clearHNameBtn').style.display = e.target.value ? 'block' : 'none';
+    });
+    document.getElementById('clearIconSearchBtn')?.addEventListener('click', () => {
+        document.getElementById('iconSearch').value = '';
+        initIcons('');
+    });
+    initDiasSelector();
+    initIcons();
+    renderHabits();
+    populateUnitSelect();
+    populateIntervalUnitSelect();
+    const toggleDiv = document.getElementById('hourToggle');
+    if (toggleDiv) toggleDiv.addEventListener('click', (e) => { e.stopPropagation(); toggleHourEnabled(); });
+    document.getElementById('settingsBtn')?.addEventListener('click', () => openSheet('settingsSheet'));
+    document.getElementById('intervalToggle')?.addEventListener('click', (e) => { e.stopPropagation(); toggleIntervalForm(); });
+    
+    const timerBtn = document.getElementById('timerStartPauseBtn');
+    if (timerBtn) timerBtn.addEventListener('click', timerStartPause);
+    
+    const addBtn = document.getElementById('addHabitBtn');
+    if (addBtn) {
+        addBtn.addEventListener('click', () => {
+            resetCreateForm();
+            openSheet('createSheet');
+        });
+    }
+    const iconTriggerEl = document.getElementById('iconPickerTrigger');
+    if (iconTriggerEl) {
+        iconTriggerEl.addEventListener('click', () => openSheet('iconPickerSheet'));
+    }
+    
+    window.addEventListener('scroll', handleTopbarOnScroll);
+    handleTopbarOnScroll();
+    
+    const topbar = document.querySelector('.topbar');
+    if (topbar && !topbar.querySelector('.minimized-title')) {
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'minimized-title';
+        titleSpan.textContent = 'Routine';
+        topbar.appendChild(titleSpan);
+    }
+    
+    loadUISettings();
+    updateLongestStreakDisplay();
 });
-const vQtyManual = document.getElementById('vQtyManual');
-if (vQtyManual) {
-    vQtyManual.oninput = (e) => {
-        if (!currentHabitId) return;
-        const h = habits.find(h => h.id === currentHabitId);
-        if (!h || h.isInterval) return;
-        const val = parseFloat(e.target.value) || 0;
-        h.history[selectedDate] = val;
-        localStorage.setItem('habits', JSON.stringify(habits));
-        renderHabits(h.id, true);
-        document.getElementById('streakNumberInView').textContent = `${getStreak(h)} días`;
-    };
+
+function populateUnitSelect() {
+    const select = document.getElementById('hUnitSelect');
+    if (!select) return;
+    select.innerHTML = '';
+    units.forEach(unit => {
+        const option = document.createElement('option');
+        option.value = unit.id;
+        option.textContent = `${unit.plural}`;
+        select.appendChild(option);
+    });
 }
+function populateIntervalUnitSelect() {
+    const select = document.getElementById('hIntervalUnitSelect');
+    if (!select) return;
+    select.innerHTML = '';
+    select.innerHTML += `<option value="minutes">minutos</option>`;
+    select.innerHTML += `<option value="hours">horas</option>`;
+}
+
+// --- SELECTOR DE DÍAS ---
+let diasSeleccionados = [0,1,2,3,4,5,6];
+const nombresDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+function initDiasSelector() {
+    const container = document.getElementById('diasTable');
+    if (!container) return;
+    container.innerHTML = '';
+    for (let i = 0; i < 7; i++) {
+        const row = document.createElement('div');
+        row.className = 'row diasRow';
+        row.dataset.dia = i;
+        row.style.cursor = 'pointer';
+        row.innerHTML = `<span>${nombresDias[i]}</span><span class="diaCheck">${diasSeleccionados.includes(i) ? '􀆅' : ''}</span>`;
+        row.addEventListener('click', (e) => { e.preventDefault(); toggleDia(i); });
+        container.appendChild(row);
+    }
+}
+function toggleDia(dia) {
+    if (diasSeleccionados.includes(dia)) diasSeleccionados = diasSeleccionados.filter(d => d !== dia);
+    else { diasSeleccionados.push(dia); diasSeleccionados.sort((a,b)=>a-b); }
+    actualizarUIDias();
+}
+function actualizarUIDias() {
+    document.querySelectorAll('#diasTable .diasRow').forEach(row => {
+        const dia = parseInt(row.dataset.dia);
+        const checkSpan = row.querySelector('.diaCheck');
+        checkSpan.textContent = diasSeleccionados.includes(dia) ? '􀆅' : '';
+    });
+}
+
+// Exposición global de todas las funciones necesarias
+window.updateQty = updateQty;
+window.openAddQuantitySheetById = openAddQuantitySheetById;
+window.openViewById = openViewById;
+window.openStreak = openStreak;
+window.openHistorySheet = openHistorySheet;
+window.closeSheet = closeSheet;
+window.saveHabit = saveHabit;
+window.deleteHabit = deleteHabit;
+window.editHabit = editHabit;
+window.handleCloseHabit = handleCloseHabit;
+window.clearQty = clearQty;
+window.setComplete = setComplete;
+window.changeMonth = changeMonth;
+window.exportData = exportData;
+window.importData = importData;
+window.confirmDeleteAllData = confirmDeleteAllData;
+window.openUnitsSheet = openUnitsSheet;
+window.openUnitEditSheet = openUnitEditSheet;
+window.saveUnit = saveUnit;
+window.deleteUnit = deleteUnit;
+window.openHabitsManagement = openHabitsManagement;
+window.deleteHabitById = deleteHabitById;
+window.deleteAllHabits = deleteAllHabits;
+window.openTimerSheet = openTimerSheet;
+window.saveTimerLog = saveTimerLog;
+window.closeTimerSheetWithoutSave = closeTimerSheetWithoutSave;
+window.toggleHourEnabled = toggleHourEnabled;
+window.toggleIntervalForm = toggleIntervalForm;
+window.confirmAddQuantity = confirmAddQuantity;
+window.toggleFontFeatures = toggleFontFeatures;
+window.toggleShowIcons = toggleShowIcons;
+window.toggleTimeSlots = toggleTimeSlots;
+window.toggleTimeFormat = toggleTimeFormat;
+window.resetOnlySettings = resetOnlySettings;

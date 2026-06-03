@@ -13,81 +13,6 @@
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <link rel="stylesheet" href="./style.css">
     <link rel="stylesheet" href="./style-dark.css">
-    <style>
-        /* Estilos adicionales para nuevos componentes */
-        .clear-field {
-            background: transparent;
-            border: none;
-            font-size: 1rem;
-            padding: 0 8px;
-            cursor: pointer;
-            color: #8e8e93;
-        }
-        .field-with-clear {
-            display: flex;
-            align-items: center;
-            width: 100%;
-        }
-        .field-with-clear input {
-            flex: 1;
-        }
-        .history-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 0.5px solid #e9e9ef;
-        }
-        .history-date {
-            font-weight: 500;
-            font-size: 1rem;
-            color: #000;
-            margin: 0;
-            padding: 0;
-            text-align: left;
-        }
-        .history-time {
-            font-size: 0.8rem;
-            color: #8e8e93;
-        }
-        .history-amount {
-            font-weight: 460;
-            color: var(--primary);
-            margin-right: 20px;
-        }
-        .entry-count {
-            background: #f2f2f6;
-            border-radius: 20px;
-            padding: 8px 12px;
-            text-align: center;
-            font-size: 0.85rem;
-            margin-bottom: 16px;
-        }
-        .timer-display {
-            font-size: 4.2rem;
-            font-weight: 200;
-            text-align: center;
-            letter-spacing: -0.5px;
-            margin: 2rem 0;
-        }
-        .timer-controls {
-            display: flex;
-            justify-content: center;
-            gap: 14px;
-            margin: 20px 0;
-        }
-        .interval-picker {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .interval-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-        }
-    </style>
 </head>
 <body>
 
@@ -102,7 +27,7 @@
             <button class="btn-act" id="addHabitBtn">􀁍</button>
         </div>
     </div>
-    <div class="bigt">Hábitos</div>
+    <div class="bigt">Routine</div>
     <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
         <div id="dateSelector">
             <input type="date" id="selectedDate">
@@ -139,18 +64,18 @@
             Repeticiones
         </div>
         <div class="table">
-            <div class="row">
-                <span class="label">Objetivo</span>
-                <input type="number" id="hGoal" class="select" placeholder="Cantidad" inputmode="decimal" step="any">
-            </div>
             <div class="row" style="cursor:pointer;" onclick="toggleIntervalEnabled()">
                 <span>Intervalos</span>
                 <div class="toggleSwitch" id="intervalToggle">
                     <div class="toggleKnob"></div>
                 </div>
             </div>
+            <div class="row">
+                <span class="label">Objetivo</span>
+                <input type="number" id="hGoal" class="select" placeholder="Cantidad" inputmode="decimal" step="any">
+            </div>
             <div class="row" id="stepRow">
-                <span class="label">Aumento</span>
+                <span class="label">Incremento</span>
                 <input type="number" id="hStep" class="select" placeholder="Paso" inputmode="decimal" step="any">
             </div>
         </div>
@@ -158,7 +83,7 @@
         <!-- Selector de unidades (normal o intervalos) -->
         <div class="table" id="unitSelectRow">
             <div class="row">
-                <span class="label">Unidad</span>
+                <span class="label">Unidad de medida</span>
                 <select id="hUnitSelect" class="select"></select>
             </div>
         </div>
@@ -361,8 +286,6 @@
             <div id="streakValue">0</div>
             <div id="streakText">Días de racha</div>
         </div>
-        <hr>
-        <div class="subt">Actividad por mes</div>
         <div class="month">
             <div class="datenav">
                 <button class="navbtns" onclick="changeMonth(-1)">􀯶</button>
@@ -371,13 +294,8 @@
             </div>
             <div class="calGrid" id="calGrid"></div>
         </div>
-        <div class="subt">Progreso semanal</div>
-        <div class="lineChartContainer">
-            <svg id="weeklyLineSvg" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; border-radius: 16px;"></svg>
-        </div>
     </div>
 </div>
-
 <!-- SHEET CONFIGURACIÓN (modificada) -->
 <div id="settingsSheet" class="sheetContent">
     <div class="headerB">
@@ -388,6 +306,16 @@
         </div>
     </div>
     <div class="form">
+        <div class="label-table">Estadísticas</div>
+        <div class="table">
+            <div class="row">
+                <span class="flex">
+                    <span class="row-icon">􀙭</span>
+                    Racha más larga
+                </span>
+                <span id="longestStreakDisplay" class="row-value">0 días</span>
+            </div>
+        </div><div class="label-table">Datos</div>
         <div class="table">
             <div class="row" style="cursor:pointer;" onclick="openHabitsManagement()">
                 <span class="flex">
@@ -404,10 +332,11 @@
                 <span class="chevron">􀆊</span>
             </div>
         </div>
+        <div class="label-table">Apariencia</div>
         <div class="table">
             <div class="row">
                 <span class="flex">
-                    <span class="row-icon">􀍟</span>
+                    <span class="row-icon">􁐏</span>
                     Color de acento
                 </span>
                 <select id="accentPresetSelect" class="select" style="max-width: 50%;">
@@ -429,25 +358,51 @@
                     <option value="custom">Personalizado</option>
                 </select>
             </div>
-        </div>
-        <div id="customAccentRows" style="display: none;">
-            <div class="table">
-                <div class="row">
-                    <span class="label">Acento en tema claro</span>
-                    <div class="colorPickerWrap" style="width: 32px; height: 32px;">
-                        <input type="color" id="accentLightPicker" value="#0076fa">
-                        <div class="colorPreview" style="background:#0076fa;"></div>
-                    </div>
+            <div class="row" style="cursor:pointer;" onclick="toggleFontFeatures()">
+                <div class="flex">
+                    <div class="row-icon">􀅑</div>
+                    <span>Mejoras tipográficas</span>
                 </div>
-                <div class="row">
-                    <span class="label">Acento en modo oscuro</span>
-                    <div class="colorPickerWrap" style="width: 32px; height: 32px;">
-                        <input type="color" id="accentDarkPicker" value="#0076fa">
-                        <div class="colorPreview" style="background:#0076fa;"></div>
-                    </div>
+                <div class="toggleSwitch" id="fontFeaturesToggle">
+                    <div class="toggleKnob"></div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="flex">
+                    <div class="row-icon">􁸞</div>
+                    <span class="label">Redondeo de tarjetas</span>
+                </div>
+                <input type="number" id="cardRadiusInput" class="select" value="26" step="1" min="0" max="60">
+            </div>
+            <div class="row" style="cursor:pointer;" onclick="toggleShowIcons()">
+                <div class="flex">
+                    <div class="row-icon">􀓔</div>
+                    <span>Mostrar íconos</span>
+                </div>
+                <div class="toggleSwitch" id="showIconsToggle">
+                    <div class="toggleKnob"></div>
+                </div>
+            </div>
+            <div class="row" style="cursor:pointer;" onclick="toggleTimeFormat()">
+                <div class="flex">
+                    <div class="row-icon">􀐫</div>
+                    <span>Formato de 12h</span>
+                </div>
+                <div class="toggleSwitch" id="timeFormatToggle">
+                    <div class="toggleKnob"></div>
                 </div>
             </div>
         </div>
+        <div class="table">
+            <div class="row" style="cursor:pointer;" onclick="toggleTimeSlots()">
+                <span>Momentos del día</span>
+                <div class="toggleSwitch" id="timeSlotsToggle">
+                    <div class="toggleKnob"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="label-table">backup</div>
         <div class="table">
             <div class="row" style="cursor:pointer;" onclick="exportData()">
                 <span class="flex">
@@ -463,14 +418,19 @@
             </div>
             <input type="file" id="importFileSettings" style="display:none" accept=".json" onchange="importData(event)">
         </div>
+        <div class="label-table">Restablecer</div>
         <div class="table">
+            <div class="row" style="cursor:pointer;" onclick="resetOnlySettings()">
+                <span class="flex" style="color: var(--del);">
+                    Restablecer la configuración
+                </span>
+            </div>
             <div class="row" style="color: var(--del);" onclick="confirmDeleteAllData()">
-                    Eliminar todos los datos
+                Eliminar todos los datos
             </div>
         </div>
     </div>
 </div>
-
 <!-- SHEET GESTIÓN DE HÁBITOS (ELIMINAR) -->
 <div id="habitsManagementSheet" class="sheetContent">
     <div class="headerB">
@@ -531,7 +491,6 @@
         </div>
     </div>
 </div>
-
 <!-- SHEET TEMPORIZADOR (INTERVALOS) -->
 <div id="timerSheet" class="sheetContent">
     <div class="headerB">
@@ -545,12 +504,11 @@
         <div class="timer-display" id="timerDisplay">00:00:00</div>
         <div class="timer-controls">
             <button class="btn btn-blue" id="timerStartPauseBtn">Iniciar</button>
-            <button class="btn btn-gray" id="timerStopBtn">Detener</button>
+            <!-- Botón "Detener" eliminado -->
         </div>
-        <div id="timerLogPreview" style="margin-top: 24px; text-align: center; font-size: 0.9rem; color: #666;"></div>
+        <!-- Se elimina el div de previsualización del log -->
     </div>
 </div>
-
 <script src="icons.js"></script>
 <script src="habits.js"></script>
 </body>

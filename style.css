@@ -43,8 +43,8 @@ body {
     margin: 0;
     background: #f4f4f7;
     color: var(--text-main);
-    padding-bottom: 100px;
     padding: 0;
+    min-height: 100vh;
 }
 
 #dateSelector input {
@@ -52,11 +52,11 @@ body {
     width: auto;
     background: transparent;
     border: none;
-    padding: 0px 0 10px;
+    padding: 0px 2px 10px;
     border-radius: 10px;
-    font-weight: 430;
+    font-weight: 500;
     font-size: 1rem;
-    color: #00000077; 
+    color: #676767; 
     transition: 400ms;
 }
 #dateSelector input:focus{
@@ -66,6 +66,7 @@ body {
 main {
     padding: 0 16px 0 16px;
     margin-top: 0;
+    padding-bottom: 40px;
 }
 
 #addHabitBtn {
@@ -79,25 +80,35 @@ main {
 }
 
 #addHabitBtn.clickAnim {
-  animation: scaleClick 0.3s forwards; /* animación rápida */
+  animation: scaleClick 0.3s forwards;
 }
 
-/* --- Sheets (iOS Style) --- */
+/* --- Sheets (iOS Style) - CORREGIDO --- */
 .sheetContent {
-    top: calc(env(safe-area-inset-top) + 2%);
     position: fixed;
+    left: 0;
+    right: 0;
     bottom: 0;
-    left: 0px;
+    height: calc(98% - env(safe-area-inset-top));
     width: 100%;
     background: #f4f4f7;
     border-radius: 10px 10px 0 0;
-    height: 98%;
+    overflow-x: hidden;
     overflow-y: auto;
     transform: translateY(100%);
     transition: transform 0.4s cubic-bezier(.11,.95,.39,.99);
     box-shadow: 0 0 28px 0px #00000000;
-    backdrop-filter: blur(52px);
     z-index: 1000;
+    display: none;
+}
+
+/* Contenedor interno para scroll */
+.sheetContent .sheet-inner {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
 }
 
 .sheetContent.closing {
@@ -152,8 +163,9 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
    font-weight: 540;
    text-align: center;
    position: sticky;
-   top: -1px;
+   top: 0;
    background: #ffffff;
+   z-index: 10;
 }
 .headerB{
    font-size: 1.03rem;
@@ -162,8 +174,9 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
    font-weight: 540;
    text-align: center;
    position: sticky;
-   top: -1px;
+   top: 0;
    background: #f4f4f7;
+   z-index: 10;
 }
 .headerIcons{
    font-size: 1.03rem;
@@ -172,7 +185,7 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
    font-weight: 540;
    text-align: center;
    position: sticky;
-   top: -1px;
+   top: 0;
    z-index: 10;
    background: #f4f4f7;
 }
@@ -449,8 +462,8 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
 }
 .ring-fg {
     fill: none;
-    stroke: currentColor; /* Esto tomará el color que inyectamos por JS */
-    stroke-width: 4;      /* Un poquito más grueso para que luzca */
+    stroke: currentColor;
+    stroke-width: 4;
     stroke-linecap: round;
     transition: stroke-dashoffset 0.3s ease;
 }
@@ -488,7 +501,6 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
 .habitName {
     font-size: 1rem;
     font-weight: 500;
-    font-feature-settings: "cv07";
 }
 .habitName::first-letter {
     text-transform: uppercase;
@@ -535,7 +547,7 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
 }.supcard, 
 .habitProgressBar, 
 .habitProgressBadge {
-    width: 100%; /* Obliga a que ocupen todo el ancho */
+    width: 100%;
 }
 .habitCard {
     align-items: stretch; 
@@ -559,14 +571,14 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    margin-bottom: 200px;
     margin-top: 2px;
+    height: 100%;
+    box-sizing: border-box;
 }
 .habitCard.completed {
     opacity: 0.5;
 }
 
-/* El contenedor que envuelve la barra y los números */
 .expandableContent {
     max-height: 0;
     opacity: 0;
@@ -577,14 +589,12 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
     font-size: 0.85rem;
     color: #000000a0;
 }
-/* Cuando el hábito tiene progreso, se expande */
 .habitCard.expanded .expandableContent {
-    max-height: 100px; /* Un valor mayor al contenido real */
+    max-height: 100px;
     opacity: 1;
     margin-top: 10px;
 }
 
-/* Animación para la barra de progreso cuando aparece */
 .habitProgressBar {
     height: 6px;
     margin-top: 6px;
@@ -612,7 +622,6 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
 .row-value{
     color: #908f93;
 }
-/* Animación para los textos de cantidad (badge) */
 .habitProgressBadge {
     margin-top: 2px;
     font-size: 0.82rem;
@@ -650,7 +659,7 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
 
 .bigt {
     font-size: 2.1rem;
-    font-weight: 670;
+    font-weight: 700;
     letter-spacing: -0.5px;
     margin: 16px 0 0px;
 }
@@ -663,6 +672,9 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
     font-size: 1rem;
     font-weight: 400;
     background: transparent ;
+}
+.field::placeholder{
+    color: c7c7c9;
 }
 .field::first-letter{
     text-transform: uppercase;
@@ -685,7 +697,7 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
     text-transform: uppercase;
     letter-spacing: 0.3px;
     color: #888;
-    margin: 16px 0 -2px 20px;
+    margin: 20px 0 -2px 20px;
 }
 #create{
    background-color: #F4F4F7;
@@ -736,11 +748,10 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
     width: 100%;
 }
 .colorPresets::-webkit-scrollbar {
-  display: none; /* Chrome, Safari */
+  display: none;
 }
 
 
-/* Ocultar el radio button nativo por completo */
 .colorPresets input[type="radio"] {
     display: none;
 }
@@ -752,24 +763,22 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
    border-radius: 50px;
    cursor: pointer;
    position: relative;
-   border: none !important; /* Adiós a los bordes */
+   border: none !important;
    outline: none !important;
    -webkit-appearance: none;
 }
 
-/* Estilo específico para el Custom Picker */
 .colorPickerWrap {
-    overflow: hidden; /* Mantiene el círculo perfecto */
+    overflow: hidden;
 }
 
 #iconColorPicker {
     position: absolute;
     top: -5px;
     left: -5px;
-    width: 50px !important; /* Más grande para cubrir bordes nativos */
+    width: 50px !important;
     height: 50px !important;
     opacity: 0;
-    /* cursor: pointer; */
     z-index: 10;
     border: none;
 }
@@ -799,34 +808,28 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
     scale: 70%;
 }
 
-/* Mostrar check si el radio está seleccionado */
 .colorPresets input:checked + label::after {
     opacity: 1;
     scale: 100%;
 }
 
-/* Mostrar check si el picker está activo (marcado por JS) */
 .colorPickerWrap.active .colorPreview::after {
     opacity: 1;
     scale: 100%;
 }
 
-/* Reset de estilos del sistema para el input color (por si acaso) */
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 input[type="color"]::-webkit-color-swatch { border: none; }
 
-/* Transición de escala para todos los círculos */
 .colorPresets label,
 .colorPickerWrap {
     transition: transform 400ms var(--bezier) !important;
 }
 
-/* Escala para el Preset Seleccionado */
 .colorPresets input:checked + label {
     transform: scale(1.09);
 }
 
-/* Escala para el Custom Picker cuando está activo */
 .colorPickerWrap.active {
     transform: scale(1.09);
 }
@@ -862,7 +865,7 @@ input[type="color"]::-webkit-color-swatch { border: none; }
   flex-direction: column;
   align-items: center;
   width: 12%;
-  height: 100%; /* Ocupa todo el alto del chart */
+  height: 100%;
   position: relative;
 }
 
@@ -878,7 +881,7 @@ input[type="color"]::-webkit-color-swatch { border: none; }
 }
 .bar {
   width: 100%;
-  flex-grow: 1; /* Esto hace que la barra gris ocupe todo el espacio disponible */
+  flex-grow: 1;
   background: #e5e5ea00;
   border-radius: 10px;
   position: relative;
@@ -926,17 +929,16 @@ hr{
 .headerB,
 .headerIcons {
     position: sticky;
-    top: -1px;
+    top: 0;
     z-index: 50;
 }
 header {
+    transition: background 0.2s;
     position: sticky;
     top: 0;
     z-index: 998;
-
     padding-top: env(safe-area-inset-top);
-
-    background: #f4f4f7;
+    background: #ffffff;
 }
 .datenav{
     display: flex;
@@ -1054,7 +1056,7 @@ header {
     color: var(--primary);
     font-weight: 550;
 }
-/* ========== NUEVAS ADICIONES (sin eliminar nada) ========== */
+/* ========== NUEVAS ADICIONES ========== */
 
 /* Overlay para oscurecer fondo */
 .sheet-overlay {
@@ -1147,7 +1149,7 @@ header {
 .addQtyBtn-primary { background: var(--primary); color: white; }
 .addQtyBtn-secondary { background: #E5E5EA; color: black; }
 
-/* Animaciones FLIP para las tarjetas (sin empujar el botón) */
+/* Animaciones FLIP para las tarjetas */
 .habitCard {
     transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1), opacity 0.2s;
 }
@@ -1159,7 +1161,6 @@ header {
     transform: translateY(-40px);
     opacity: 0;
 }
-/* La barra de progreso NO debe empujar el botón; ya está dentro de .habitInfo, que tiene flex:1 */
 .habitProgressBar, .habitProgressBadge {
     width: 100%;
 }
@@ -1189,7 +1190,7 @@ header {
 .clear-field{
     font-family: 'sf';
     font-size: 0.6rem;
-}/* Estilos para selector de color de acento en settings */
+}
 .accent-option {
     width: 32px;
     height: 32px;
@@ -1203,7 +1204,6 @@ header {
     box-shadow: 0 0 0 2px var(--primary);
     transform: scale(1.1);
 }
-/* Estilos para intervalos y temporizador */
 #stepRow {
     transition: display 0.2s;
 }
@@ -1211,7 +1211,6 @@ header {
     max-width: 100%;
 }
 
-/* Estilos para el selector de color personalizado (igual que en icon picker) */
 .colorPickerWrap {
     position: relative;
     width: 32px;
@@ -1240,4 +1239,133 @@ select{
 }
 input[type="time"]{
     color: var(--primary);
+}
+/* ===== MINIMIZACIÓN DEL HEADERB DENTRO DE LAS SHEETS ===== */
+.sheetContent .headerB {
+    transition: background 0.2s ease, border-bottom 0.2s ease;
+    border-bottom: 0.9px solid transparent;
+}
+.sheetContent .headerB.minimized {
+    padding: 16px 0 13px;
+    background: #fcfcfce1;
+    backdrop-filter: blur(18px);
+    border-bottom: 0.9px solid #d8d8d8;
+}
+
+/* ===== TOPBAR MINIMIZADO (SCROLL iOS) ===== */
+.topbar {
+    transition: all 0.25s ease-out;
+    background: #f4f4f7;
+    backdrop-filter: blur(18px);
+    border-bottom: 0.9px solid transparent;
+    position: relative;
+}
+
+.topbar.minimized {
+    padding: 6px 20px 4px;
+    background: #fcfcfce1;
+    border-bottom: 0.9px solid #d8d8d8;
+}
+
+.topbar.minimized .bigt {
+    font-size: 0;
+    margin: 0;
+    display: none;
+}
+
+.topbar.minimized #dateSelector input {
+    display: none;
+}
+
+/* Título centrado cuando la topbar está minimizada */
+.topbar .minimized-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.05rem;
+    font-weight: 550;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+}
+
+.topbar.minimized .minimized-title {
+    opacity: 1;
+}
+
+.clear-field {
+            background: transparent;
+            border: none;
+            font-size: 1rem;
+            padding: 0 8px;
+            cursor: pointer;
+            color: #8e8e93;
+        }
+        .field-with-clear {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        .field-with-clear input {
+            flex: 1;
+        }
+        .history-date {
+            font-weight: 500;
+            font-size: 1rem;
+            color: #000;
+            margin: 0;
+            padding: 0;
+            text-align: left;
+        }
+        .history-time {
+            font-size: 0.8rem;
+            color: #8e8e93;
+        }
+        .history-amount {
+            font-weight: 460;
+            color: var(--primary);
+            margin-right: 10px;
+        }
+        .entry-count {
+            background: #f2f2f6;
+            border-radius: 20px;
+            padding: 8px 12px;
+            text-align: center;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+        .timer-display {
+            font-size: 4.2rem;
+            font-weight: 200;
+            text-align: center;
+            letter-spacing: -0.5px;
+            margin: 2rem 0;
+        }
+        .timer-controls {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin: 20px 0;
+        }
+        .interval-picker {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .interval-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+        }
+        /* ===== AJUSTES DINÁMICOS ===== */
+:root {
+    --card-radius: 26px;
+}
+.habitCard {
+    border-radius: var(--card-radius);
+}
+body.font-features {
+    font-feature-settings: "cv07", "cv11";
 }

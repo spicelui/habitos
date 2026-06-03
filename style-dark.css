@@ -195,7 +195,7 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
 }
 
 header {
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.068);
     backdrop-filter: blur(12px);
 }
 
@@ -219,7 +219,7 @@ header {
 }
 
 .row{
-   border-top: 0.9px solid #424245;
+   border-top: 0.9px solid #48484b;
 }
 .row:first-child{
    border-top: 1px transparent;
@@ -308,7 +308,8 @@ hr{
 }
 
 .topbar {
-    background: #000;
+    background: rgba(0, 0, 0, 0.468);
+    backdrop-filter: blur(12px);
 }
 /* Toggle switch */
 .toggleSwitch {
@@ -350,8 +351,114 @@ hr{
 .chevron{
     color: #ffffff54;
 }
+
+/* ===== MINIMIZACIÓN DEL HEADERB DENTRO DE LAS SHEETS ===== */
+.sheetContent .headerB {
+    transition: background 0.2s ease, border-bottom 0.2s ease;
+    border-bottom: 0.9px solid transparent;
+}
+.sheetContent .headerB.minimized {
+    background: #2c2c2edc;
+    border-bottom: 0.9px solid #d8d8d831;
 }
 
+/* ===== TOPBAR MINIMIZADO (SCROLL iOS) ===== */
+.topbar {
+    transition: all 0.25s ease-out;
+    background: #0404046f;
+    border-bottom: 0.9px solid transparent;
+    position: relative;
+}
+
+.topbar.minimized {
+    background: #1c1c1edc;
+    backdrop-filter: blur(18px);
+    border-bottom: 0.9px solid #d8d8d831;
+}
+
+.topbar.minimized .bigt {
+    font-size: 0;
+    margin: 0;
+    display: none;
+}
+
+.topbar.minimized #dateSelector input {
+    display: none;
+}
+
+/* Título centrado cuando la topbar está minimizada */
+.topbar .minimized-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.05rem;
+    font-weight: 550;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+}
+
+.topbar.minimized .minimized-title {
+    opacity: 1;
+}
+
+/* Ajuste para el header cuando hay scroll */
+header {
+    transition: background 0.2s;
+}
+.clear-field {
+            color: #fff;
+        }
+        .history-date {
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            text-align: left;
+        }
+        .history-time {
+            font-size: 0.8rem;
+            color: #7a7a7c;
+        }
+        .history-amount {
+            font-weight: 460;
+            color: var(--primary);
+            margin-right: 10px;
+        }
+        .entry-count {
+            background: #f2f2f6;
+            border-radius: 20px;
+            padding: 8px 12px;
+            text-align: center;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+        .timer-display {
+            font-size: 4.2rem;
+            font-weight: 200;
+            text-align: center;
+            letter-spacing: -0.5px;
+            margin: 2rem 0;
+        }
+        .timer-controls {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin: 20px 0;
+        }
+        .interval-picker {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .interval-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+        }
 .lineChartContainer{
     background-color:#ffffff;
 }
+}
+
