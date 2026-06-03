@@ -7,6 +7,7 @@
     --radius-ios: 20px;
     --bezier: cubic-bezier(0,1.09,1,1);
     --del: #f12323;
+    --overdue: #ff3b30;
 }
 
 @font-face {
@@ -19,7 +20,7 @@
 }
 :root {
   font-family: Inter, sans-serif;
-  font-feature-settings: 'liga' 1, 'calt' 1; /* fix for Chrome */
+  font-feature-settings: 'liga' 1, 'calt' 1;
 }
 @supports (font-variation-settings: normal) {
   :root { font-family: InterVariable, sans-serif; }
@@ -45,6 +46,18 @@ body {
     color: var(--text-main);
     padding: 0;
     min-height: 100vh;
+}
+
+/* Dark mode lighter */
+body.dark-lighter {
+    --bg: #2C2C2E;
+    --card: #3A3A3C;
+}
+
+/* White text on accent for dark mode */
+body.accent-white-text .btn-blue,
+body.accent-white-text .botoncito {
+    color: white !important;
 }
 
 #dateSelector input {
@@ -83,6 +96,32 @@ main {
   animation: scaleClick 0.3s forwards;
 }
 
+/* Search bar */
+.search-habits {
+    background: #ececec;
+    border-radius: 10px;
+    padding: 6px 12px;
+    margin: 0px 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 0px;
+}
+.search-habits span {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    font-weight: 450;
+}
+.search-habits input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    font-size: 1rem;
+    color: var(--text-main);
+}
+.search-habits input::placeholder {
+    color: var(--text-muted);
+}
+
 /* --- Sheets (iOS Style) - CORREGIDO --- */
 .sheetContent {
     position: fixed;
@@ -102,7 +141,6 @@ main {
     display: none;
 }
 
-/* Contenedor interno para scroll */
 .sheetContent .sheet-inner {
     height: 100%;
     overflow-y: auto;
@@ -120,13 +158,6 @@ main {
     box-shadow: 0 0 28px 0px #0000001a;
 }
 
-/* Opcional: Oscurecer un poco la sheet de abajo cuando hay otra encima */
-#routineViewSheet.active {
-    filter: brightness(1);
-    transition: filter 0.3s;
-}
-
-/* Si activeSheet es diferente a routineViewSheet pero routineViewSheet existe en el DOM... */
 body:has(#viewSheet.active) #routineViewSheet,
 body:has(#streakSheet.active) #routineViewSheet,
 body:has(#iconPickerSheet.active) #routineViewSheet {
@@ -561,6 +592,9 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
     transition: 300ms;
     overflow: hidden;
     background-color: #fff;
+}
+.habitCard.overdue {
+    border-left: 4px solid var(--overdue);
 }
 .supcard{
     display: flex;
@@ -1368,4 +1402,55 @@ input[type="time"]{
 }
 body.font-features {
     font-feature-settings: "cv07", "cv11";
+}
+
+/* Elimina la regla de .timeSlotsToggle (ya no se usa) */
+/* Asegura el gap en carpetas */
+.folder-group {
+    margin-bottom: 16px;
+}
+.folder-group > div {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.folder-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-left: 8px;
+    font-weight: 600;
+}
+
+/* Log view sheet */
+.log-detail-row {
+    padding: 12px 0;
+}
+.log-detail-label {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+.log-detail-value {
+    color: var(--text-main);
+}
+/* Color rojo para la hora vencida */
+.habitTime.overdue-time {
+    color: var(--overdue) !important;
+}
+
+/* Asegurar el gap entre grupos de carpetas y dentro de ellos */
+.folder-group {
+    margin-bottom: 12px;
+}
+.folder-group > div {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.folder-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-left: 8px;
+    font-weight: 600;
 }

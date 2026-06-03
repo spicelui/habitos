@@ -35,8 +35,12 @@
     </div>
   </div>
 </header>
+    <div class="search-habits">
+        <span>􀊫</span>
+        <input type="text" id="habitSearchInput" placeholder="Buscar" autocomplete="off">
+    </div>
 
-<main id="habitsContainer"></main>
+    <main id="habitsContainer"></main>
 
 <!-- SHEET CREAR / EDITAR HÁBITO -->
 <div id="createSheet" class="sheetContent">
@@ -60,11 +64,20 @@
             </div>
         </div>
 
-        <div class="label-table">
-            Repeticiones
-        </div>
+        <div class="label-table">Tipo</div>
         <div class="table">
-            <div class="row" style="cursor:pointer;" onclick="toggleIntervalEnabled()">
+            <div class="row">
+                <span class="label">Tipo de hábito</span>
+                <select id="hTypeSelect" class="select">
+                    <option value="build">Construir (alcanzar meta)</option>
+                    <option value="quit">Dejar (no superar meta)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="label-table">Repeticiones</div>
+        <div class="table">
+            <div class="row" style="cursor:pointer;" onclick="toggleIntervalForm()">
                 <span>Intervalos</span>
                 <div class="toggleSwitch" id="intervalToggle">
                     <div class="toggleKnob"></div>
@@ -80,14 +93,12 @@
             </div>
         </div>
 
-        <!-- Selector de unidades (normal o intervalos) -->
         <div class="table" id="unitSelectRow">
             <div class="row">
                 <span class="label">Unidad de medida</span>
                 <select id="hUnitSelect" class="select"></select>
             </div>
         </div>
-        <!-- Selector de unidad para intervalos (minutos/horas) -->
         <div class="table" id="intervalUnitRow" style="display: none;">
             <div class="row">
                 <span class="label">Unidad de tiempo</span>
@@ -98,9 +109,7 @@
             </div>
         </div>
 
-        <div class="label-table">
-            horario
-        </div>
+        <div class="label-table">horario</div>
         <div class="table" id="diasTable"></div>
 
         <div class="table" id="hourTable">
@@ -114,10 +123,32 @@
                 <span class="label">Hora</span>
                 <input type="time" id="hTime" class="select">
             </div>
+            <div class="row" id="whenRowContainer" style="display: none;">
+                <span class="label">Cuando</span>
+                <select id="hTimeCondition" class="select">
+                    <option value="before">Antes</option>
+                    <option value="at">En tiempo</option>
+                    <option value="after">Después</option>
+                </select>
+            </div>
         </div>
-        <div class="label-table">
-            Otros detalles
+
+        <div class="label-table">Organización</div>
+        <div class="table">
+            <div class="row">
+                <span class="label">Carpeta</span>
+                <select id="hFolderSelect" class="select"></select>
+            </div>
         </div>
+
+        <div class="label-table">Enlace</div>
+        <div class="table">
+            <div class="row">
+                <input type="url" id="hLink" class="field" placeholder="https://...">
+            </div>
+        </div>
+
+        <div class="label-table">Otros detalles</div>
         <div class="table">
             <div class="row">
                 <textarea id="hDescription" class="field" rows="6" placeholder="Descripción" style="width:100%; resize: none;"></textarea>
@@ -153,9 +184,16 @@
                 <input type="number" id="vQtyManual" class="manualQtyInput" value="0" step="any">
                 <button class="plusminus" onclick="updateQty(1)">􀅼</button>
             </div>
-            <!-- Botón para intervalos/temporizador -->
             <div id="viewTimerButton" style="margin-top: 12px; display: none;">
                 <button class="btn btn-blue" onclick="openTimerSheet()">Temporizador</button>
+            </div>
+            <div id="vLinkRow" class="row" style="margin-top: 12px; display: none;">
+                <span class="row-icon">􀌨</span>
+                <a id="vLinkValue" href="#" target="_blank" style="color: var(--primary);">Enlace</a>
+            </div>
+            <div id="vFolderRow" class="row" style="margin-top: 12px; display: none;">
+                <span class="row-icon">􀓔</span>
+                <span id="vFolderValue"></span>
             </div>
         </div>
         
@@ -211,7 +249,31 @@
     </div>
 </div>
 
-<!-- SHEET AGREGAR CANTIDAD (normal o intervalo) -->
+<!-- SHEET VER REGISTRO -->
+<div id="logViewSheet" class="sheetContent">
+    <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="closeSheet('logViewSheet')">Cerrar</button>
+            <div class="subtitle">Registro</div>
+            <button class="btn-action" onclick="deleteCurrentLog()" style="color: var(--del);">Eliminar</button>
+        </div>
+    </div>
+    <div class="form">
+        <div class="table">
+            <div class="row"><span class="log-detail-label">Tipo:</span><span id="logTypeValue" class="log-detail-value"></span></div>
+            <div class="row"><span class="log-detail-label">Fecha:</span><span id="logDateValue" class="log-detail-value"></span></div>
+            <div class="row"><span class="log-detail-label">Hora:</span><span id="logTimeValue" class="log-detail-value"></span></div>
+            <div class="row"><span class="log-detail-label">Cantidad:</span><span id="logAmountValue" class="log-detail-value"></span></div>
+            <div class="row"><span class="log-detail-label">Notas:</span><span id="logNotesValue" class="log-detail-value"></span></div>
+        </div>
+        <div id="logIntervalContainer" class="table" style="display: none;">
+            <div class="row"><span class="log-detail-label">Inicio:</span><span id="logStartDateTime" class="log-detail-value"></span></div>
+            <div class="row"><span class="log-detail-label">Fin:</span><span id="logEndDateTime" class="log-detail-value"></span></div>
+        </div>
+    </div>
+</div>
+
+<!-- SHEET AGREGAR CANTIDAD -->
 <div id="addQuantitySheet" class="sheetContent addQtySheet">
     <div class="headerB">
         <div class="centro">
@@ -221,22 +283,23 @@
         </div>
     </div>
     <div class="form">
-        <!-- Contenido numérico normal -->
         <div id="addQtyNumeric">
             <input type="number" id="addQtyInput" class="addQtyInput" placeholder="0" value="0" step="any" inputmode="decimal">
+            <div class="table">
+                <div class="row"><span>Fecha</span><input type="date" id="addQtyDate" class="select"></div>
+                <div class="row"><span>Hora</span><input type="time" id="addQtyTime" class="select" step="1"></div>
+                <div class="row"><span>Notas</span><textarea id="addQtyNotes" rows="2" style="flex:1; background:transparent; border:none;"></textarea></div>
+            </div>
         </div>
-        <!-- Contenido para intervalos (time pickers) -->
         <div id="addQtyInterval" style="display: none;">
             <div class="table">
-                <div class="row">
-                    <span>Inicio</span>
-                    <input class="select" type="time" id="intervalStart" step="1" value="00:00">
-                </div>
-                <div class="row">
-                    <span>Fin</span>
-                    <input class="select" type="time" id="intervalEnd" step="1" value="00:00">
-                </div>
+                <div class="row"><span>Inicio fecha</span><input type="date" id="intervalStartDate" class="select"></div>
+                <div class="row"><span>Inicio hora</span><input type="time" id="intervalStart" step="1" class="select"></div>
+                <div class="row"><span>Fin fecha</span><input type="date" id="intervalEndDate" class="select"></div>
+                <div class="row"><span>Fin hora</span><input type="time" id="intervalEnd" step="1" class="select"></div>
+                <div class="row"><span>Notas</span><textarea id="addQtyNotesInterval" rows="2" style="flex:1; background:transparent; border:none;"></textarea></div>
             </div>
+            <div id="timerLogPreview" style="text-align:center; padding:12px; color:var(--primary);"></div>
         </div>
     </div>
 </div>
@@ -273,6 +336,38 @@
     </div>
 </div>
 
+<!-- ICON PICKER PARA CARPETAS -->
+<div id="iconPickerSheetFolder" class="sheetContent">
+    <div class="headerIcons">
+        <div class="duo">
+            <button class="btn-action" onclick="closeSheet('iconPickerSheetFolder'); openSheet('folderEditSheet');">Atrás</button>
+            <div class="subtitle">Icono</div>
+            <button class="btn-action" id="confirmIconBtnFolder" style="font-weight: 560;">Aplicar</button>
+        </div>
+    </div>
+    <div class="content">
+        <div class="table2">
+            <div class="row">
+                <span class="label">Color de ícono</span>
+                <div class="colorPickerWrap">
+                    <input type="color" id="folderIconColorPicker" value="#007AFF">
+                    <div class="colorPreview" id="folderColorPreview" style="background:#007AFF;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="iconsbg">
+            <div class="searchBar">
+                <div class="search">􀊫</div>
+                <div class="field-with-clear" style="flex:1">
+                    <input type="text" id="iconSearchFolder" placeholder="Buscar íconos" autocomplete="off" style="flex:1">
+                    <button type="button" class="clear-field" id="clearIconSearchBtnFolder">􀁡</button>
+                </div>
+            </div>
+            <div id="iconGridFolder"></div>
+        </div>
+    </div>
+</div>
+
 <!-- STREAK SHEET -->
 <div id="streakSheet" class="sheetContent">
    <div class="headerB">
@@ -296,7 +391,8 @@
         </div>
     </div>
 </div>
-<!-- SHEET CONFIGURACIÓN (modificada) -->
+
+<!-- SHEET CONFIGURACIÓN -->
 <div id="settingsSheet" class="sheetContent">
     <div class="headerB">
         <div class="centro">
@@ -309,129 +405,134 @@
         <div class="label-table">Estadísticas</div>
         <div class="table">
             <div class="row">
-                <span class="flex">
-                    <span class="row-icon">􀙭</span>
-                    Racha más larga
-                </span>
+                <span class="flex"><span class="row-icon">􀙭</span>Racha más larga</span>
                 <span id="longestStreakDisplay" class="row-value">0 días</span>
             </div>
-        </div><div class="label-table">Datos</div>
+        </div>
+        <div class="label-table">Datos</div>
         <div class="table">
             <div class="row" style="cursor:pointer;" onclick="openHabitsManagement()">
-                <span class="flex">
-                    <span class="row-icon">􀏭</span>
-                    Hábitos
-                </span>
-                <span class="chevron">􀆊</span>
+                <span class="flex"><span class="row-icon">􀏭</span>Hábitos</span><span class="chevron">􀆊</span>
             </div>
             <div class="row" style="cursor:pointer;" onclick="openUnitsSheet()">
-                <span class="flex">
-                    <span class="row-icon">􀟀</span>
-                    Unidades de medida
-                </span>
-                <span class="chevron">􀆊</span>
+                <span class="flex"><span class="row-icon">􀟀</span>Unidades de medida</span><span class="chevron">􀆊</span>
+            </div>
+            <div class="row" style="cursor:pointer;" onclick="openFoldersSheet()">
+                <span class="flex"><span class="row-icon">􀣍</span>Carpetas</span><span class="chevron">􀆊</span>
             </div>
         </div>
-        <div class="label-table">Apariencia</div>
+        <div class="label-table">organización</div>
+        <div class="table">
+            <div class="row" style="cursor:pointer;" onclick="toggleScheduledFirst()">
+                <div class="flex"><span>Programados primero</span></div>
+                <div class="toggleSwitch" id="scheduledFirstToggle"><div class="toggleKnob"></div></div>
+            </div>
+            <div class="row">
+                <div class="flex"><span>Agrupamiento</span></div>
+                <select id="groupingSelect" class="select">
+                    <option value="time">Momento del día</option>
+                    <option value="folder">Carpeta</option>
+                </select>
+            </div>
+        </div>
+        <div class="label-table">tema</div>
         <div class="table">
             <div class="row">
-                <span class="flex">
-                    <span class="row-icon">􁐏</span>
-                    Color de acento
-                </span>
+                <span class="flex"><span class="row-icon">􁐏</span>Color de acento</span>
                 <select id="accentPresetSelect" class="select" style="max-width: 50%;">
                     <option value="default">Predeterminado</option>
-                    <option value="yellow">Amarillo</option>
-                    <option value="cyan">Cian</option>
-                    <option value="orange">Naranja</option>
-                    <option value="pink">Rosa</option>
+                    <option value="yellow">Amarillo</option><option value="cyan">Cian</option>
+                    <option value="orange">Naranja</option><option value="pink">Rosa</option>
                     <option value="brown">Café</option>
                     <optgroup label="Temas suaves">
-                        <option value="p1">Cloud</option>
-                        <option value="p3">Ocean</option>
-                        <option value="p4">Gold pink</option>
-                        <option value="p5">Lavender</option>
-                        <option value="p6">Green Tea</option>
-                        <option value="p7">Brick</option>
+                        <option value="p1">Cloud</option><option value="p3">Ocean</option>
+                        <option value="p4">Gold pink</option><option value="p5">Lavender</option>
+                        <option value="p6">Green Tea</option><option value="p7">Brick</option>
                         <option value="p8">Apple</option>
                     </optgroup>
                     <option value="custom">Personalizado</option>
                 </select>
             </div>
+        </div>
+        <div class="table">
+            <div id="customAccentRows" style="display: none; flex-direction: column;">
+                <div class="row">
+                    <span>Modo claro</span>
+                    <div class="colorPickerWrap"><input type="color" id="accentLightPicker"><div class="colorPreview"></div></div>
+                </div>
+                <div class="row">
+                    <span>Modo oscuro</span>
+                    <div class="colorPickerWrap"><input type="color" id="accentDarkPicker"><div class="colorPreview"></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="table">
+            <div class="row" style="cursor:pointer;" onclick="toggleAccentWhiteText()">
+                <div class="flex"><span>Blanco sobre acento</span></div>
+                <div class="toggleSwitch" id="accentWhiteTextToggle"><div class="toggleKnob"></div></div>
+            </div>
+        </div>
+        <div class="label-table">formato</div>
+        <div class="table">
             <div class="row" style="cursor:pointer;" onclick="toggleFontFeatures()">
-                <div class="flex">
-                    <div class="row-icon">􀅑</div>
-                    <span>Mejoras tipográficas</span>
-                </div>
-                <div class="toggleSwitch" id="fontFeaturesToggle">
-                    <div class="toggleKnob"></div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="flex">
-                    <div class="row-icon">􁸞</div>
-                    <span class="label">Redondeo de tarjetas</span>
-                </div>
-                <input type="number" id="cardRadiusInput" class="select" value="26" step="1" min="0" max="60">
-            </div>
-            <div class="row" style="cursor:pointer;" onclick="toggleShowIcons()">
-                <div class="flex">
-                    <div class="row-icon">􀓔</div>
-                    <span>Mostrar íconos</span>
-                </div>
-                <div class="toggleSwitch" id="showIconsToggle">
-                    <div class="toggleKnob"></div>
-                </div>
+                <div class="flex"><div class="row-icon">􀅑</div><span>Mejoras tipográficas</span></div>
+                <div class="toggleSwitch" id="fontFeaturesToggle"><div class="toggleKnob"></div></div>
             </div>
             <div class="row" style="cursor:pointer;" onclick="toggleTimeFormat()">
-                <div class="flex">
-                    <div class="row-icon">􀐫</div>
-                    <span>Formato de 12h</span>
-                </div>
-                <div class="toggleSwitch" id="timeFormatToggle">
-                    <div class="toggleKnob"></div>
-                </div>
+                <div class="flex"><div class="row-icon">􀐫</div><span>Formato de 12h</span></div>
+                <div class="toggleSwitch" id="timeFormatToggle"><div class="toggleKnob"></div></div>
+            </div>
+        </div>
+        <div class="label-table">tarjetas</div>
+        <div class="table">
+            <div class="row" style="cursor:pointer;" onclick="toggleButtonOnCard()">
+                <div class="flex"><span>Entrada rápida</span></div>
+                <div class="toggleSwitch" id="buttonOnCardToggle"><div class="toggleKnob"></div></div>
             </div>
         </div>
         <div class="table">
-            <div class="row" style="cursor:pointer;" onclick="toggleTimeSlots()">
-                <span>Momentos del día</span>
-                <div class="toggleSwitch" id="timeSlotsToggle">
-                    <div class="toggleKnob"></div>
-                </div>
+            <div class="row" style="cursor:pointer;" onclick="toggleShowIcons()">
+                <div class="flex"><div class="row-icon">􀓔</div><span>Mostrar ícono</span></div>
+                <div class="toggleSwitch" id="showIconsToggle"><div class="toggleKnob"></div></div>
+            </div>
+            <div class="row" style="cursor:pointer;" onclick="toggleUnitLabel()">
+                <div class="flex"><div class="row-icon">􀟀</div><span>Mostrar unidad de medida</span></div>
+                <div class="toggleSwitch" id="unitLabelToggle"><div class="toggleKnob"></div></div>
+            </div>
+            <div class="row" style="cursor:pointer;" onclick="toggleTimeOnCard()">
+                <div class="flex"><div class="row-icon">􀐫</div><span>Mostrar hora</span></div>
+                <div class="toggleSwitch" id="timeOnCardToggle"><div class="toggleKnob"></div></div>
+            </div>
+            <div class="row" style="cursor:pointer;" onclick="toggleProgressBar()">
+                <div class="flex"><div class="row-icon">􀙹</div><span>Mostrar barra de progreso</span></div>
+                <div class="toggleSwitch" id="progressBarToggle"><div class="toggleKnob"></div></div>
+            </div>
+            <div class="row" style="cursor:pointer;" onclick="toggleOverdue()">
+                <div class="flex"><div class="row-icon">􀻨</div><span>Vencimiento en rojo</span></div>
+                <div class="toggleSwitch" id="overdueToggle"><div class="toggleKnob"></div></div>
             </div>
         </div>
-
-        <div class="label-table">backup</div>
         <div class="table">
-            <div class="row" style="cursor:pointer;" onclick="exportData()">
-                <span class="flex">
-                    <span class="row-icon">􀤂</span>
-                    Crear copia de seguridad
-                </span>
+            <div class="row">
+                <div class="flex"><div class="row-icon">􁸞</div><span class="label">Redondeo de tarjetas</span></div>
+                <input type="number" id="cardRadiusInput" class="select" value="26" step="1" min="0" max="60">
             </div>
-            <div class="row" style="cursor:pointer;" onclick="document.getElementById('importFileSettings').click()">
-                <span class="flex">
-                    <span class="row-icon">􀅉</span>
-                    Restaurar datos desde archivo
-                </span>
-            </div>
+        </div>
+        <div class="label-table">Backup</div>
+        <div class="table">
+            <div class="row" style="cursor:pointer;" onclick="exportData()"><span class="flex"><span class="row-icon">􀤂</span>Crear copia de seguridad</span></div>
+            <div class="row" style="cursor:pointer;" onclick="document.getElementById('importFileSettings').click()"><span class="flex"><span class="row-icon">􀅉</span>Restaurar datos desde archivo</span></div>
             <input type="file" id="importFileSettings" style="display:none" accept=".json" onchange="importData(event)">
         </div>
         <div class="label-table">Restablecer</div>
         <div class="table">
-            <div class="row" style="cursor:pointer;" onclick="resetOnlySettings()">
-                <span class="flex" style="color: var(--del);">
-                    Restablecer la configuración
-                </span>
-            </div>
-            <div class="row" style="color: var(--del);" onclick="confirmDeleteAllData()">
-                Eliminar todos los datos
-            </div>
+            <div class="row" style="cursor:pointer;" onclick="resetOnlySettings()"><span class="flex" style="color: var(--del);">Restablecer la configuración</span></div>
+            <div class="row" style="color: var(--del); cursor:pointer;" onclick="confirmDeleteAllData()">Eliminar todos los datos</div>
         </div>
     </div>
 </div>
-<!-- SHEET GESTIÓN DE HÁBITOS (ELIMINAR) -->
+
+<!-- SHEET GESTIÓN DE HÁBITOS -->
 <div id="habitsManagementSheet" class="sheetContent">
     <div class="headerB">
         <div class="centro">
@@ -442,11 +543,7 @@
     </div>
     <div class="form">
         <div id="habitsManagementList" class="table"></div>
-        <div class="table">
-            <div class="row" style="justify-content: center;">
-                <button onclick="deleteAllHabits()" class="btn-del">Borrar todos los hábitos</button>
-            </div>
-        </div>
+        <div class="table"><div class="row" style="justify-content: center;"><button onclick="deleteAllHabits()" class="btn-del">Borrar todos los hábitos</button></div></div>
     </div>
 </div>
 
@@ -459,9 +556,7 @@
             <button class="btn-action" onclick="openUnitEditSheet(null)">Agregar</button>
         </div>
     </div>
-    <div class="form">
-        <div id="unitsList" class="table"></div>
-    </div>
+    <div class="form"><div id="unitsList" class="table"></div></div>
 </div>
 
 <!-- SHEET EDITAR UNIDAD -->
@@ -475,23 +570,58 @@
     </div>
     <div class="form">
         <div class="table">
-            <div class="row">
-                <span class="label">Singular</span>
-                <input type="text" id="unitSingular" class="select" placeholder="Uno">
-            </div>
-            <div class="row">
-                <span class="label">Plural</span>
-                <input type="text" id="unitPlural" class="select" placeholder="Varios">
-            </div>
+            <div class="row"><span class="label">Singular</span><input type="text" id="unitSingular" class="select" placeholder="Uno"></div>
+            <div class="row"><span class="label">Plural</span><input type="text" id="unitPlural" class="select" placeholder="Varios"></div>
         </div>
         <div id="deleteUnitRow" class="table" style="margin-top: 16px; display: none;">
-            <div class="row" style="justify-content: center;">
-                <button onclick="deleteUnit()" class="btn-del">Eliminar unidad</button>
-            </div>
+            <div class="row" style="justify-content: center;"><button onclick="deleteUnit()" class="btn-del">Eliminar unidad</button></div>
         </div>
     </div>
 </div>
-<!-- SHEET TEMPORIZADOR (INTERVALOS) -->
+
+<!-- SHEET CARPETAS -->
+<div id="foldersSheet" class="sheetContent">
+    <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="closeSheet('foldersSheet')">Cerrar</button>
+            <div class="subtitle">Carpetas</div>
+            <button class="btn-action" onclick="openFolderEditSheet(null)">Agregar</button>
+        </div>
+    </div>
+    <div class="form"><div id="foldersList" class="table"></div></div>
+</div>
+
+<!-- SHEET EDITAR CARPETA -->
+<div id="folderEditSheet" class="sheetContent">
+    <div class="headerB">
+        <div class="centro">
+            <button class="btn-action" onclick="closeSheet('folderEditSheet')">Cancelar</button>
+            <div class="subtitle">Editar carpeta</div>
+            <button class="btn-action" onclick="saveFolder()">Guardar</button>
+        </div>
+    </div>
+    <div class="form">
+        <div class="table">
+            <div class="row">
+                <span class="label">Icono</span>
+                <div class="select" id="folderIconTrigger" style="width:50px; height:50px; font-size:1.5rem;">􀓔</div>
+            </div>
+            <div class="row">
+                <span class="label">Carpeta</span>
+                <input type="text" id="folderName" placeholder="Nombre" class="select">
+            </div>
+            <div class="row" style="cursor:pointer;" onclick="toggleFolderShowIcons()">
+                <span>Mostrar iconos</span>
+                <div class="toggleSwitch" id="folderShowIconsToggle"><div class="toggleKnob"></div></div>
+            </div>
+        </div>
+        <div id="deleteFolderRow" class="table" style="margin-top: 16px; display: none;">
+            <div class="row" style="justify-content: center;"><button onclick="deleteFolder()" class="btn-del">Eliminar carpeta</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- SHEET TEMPORIZADOR -->
 <div id="timerSheet" class="sheetContent">
     <div class="headerB">
         <div class="centro">
@@ -502,14 +632,68 @@
     </div>
     <div style="padding: 20px;">
         <div class="timer-display" id="timerDisplay">00:00:00</div>
-        <div class="timer-controls">
-            <button class="btn btn-blue" id="timerStartPauseBtn">Iniciar</button>
-            <!-- Botón "Detener" eliminado -->
-        </div>
-        <!-- Se elimina el div de previsualización del log -->
+        <div class="timer-controls"><button class="btn btn-blue" id="timerStartPauseBtn">Iniciar</button></div>
     </div>
 </div>
+
 <script src="icons.js"></script>
 <script src="habits.js"></script>
+<script>
+    // Folder icon picker
+    let folderSelectedIcon = '􀓔';
+    let folderSelectedColor = '#0076ff';
+    const folderIconTrigger = document.getElementById('folderIconTrigger');
+    const folderColorPicker = document.getElementById('folderIconColorPicker');
+    const folderColorPreview = document.getElementById('folderColorPreview');
+    if (folderColorPicker) {
+        folderColorPicker.addEventListener('input', (e) => {
+            folderSelectedColor = e.target.value;
+            folderColorPreview.style.background = folderSelectedColor;
+            folderIconTrigger.style.color = folderSelectedColor;
+            initIconsFolder();
+        });
+    }
+    function initIconsFolder(filter = "") {
+        const grid = document.getElementById('iconGridFolder');
+        if (!grid || typeof iconData === 'undefined') return;
+        grid.innerHTML = "";
+        const searchLower = filter.toLowerCase();
+        for (const [category, icons] of Object.entries(iconData)) {
+            const filtered = icons.filter(icon => icon.name.toLowerCase().includes(searchLower));
+            if (filtered.length) {
+                const catWrap = document.createElement('div');
+                catWrap.className = 'iconCategory';
+                catWrap.innerHTML = `<div class="categoryTitle">${category}</div>`;
+                const subGrid = document.createElement('div');
+                subGrid.className = 'iconGridSub';
+                filtered.forEach(icon => {
+                    const div = document.createElement('div');
+                    div.className = 'iconItem';
+                    div.textContent = icon.char;
+                    if (icon.char === folderSelectedIcon) div.classList.add('selected');
+                    div.style.color = icon.char === folderSelectedIcon ? folderSelectedColor : '#8e8e93';
+                    div.onclick = () => {
+                        folderSelectedIcon = icon.char;
+                        folderIconTrigger.textContent = folderSelectedIcon;
+                        folderIconTrigger.style.color = folderSelectedColor;
+                        closeSheet('iconPickerSheetFolder', () => openSheet('folderEditSheet'));
+                    };
+                    subGrid.appendChild(div);
+                });
+                catWrap.appendChild(subGrid);
+                grid.appendChild(catWrap);
+            }
+        }
+    }
+    document.getElementById('confirmIconBtnFolder')?.addEventListener('click', () => {
+        closeSheet('iconPickerSheetFolder', () => openSheet('folderEditSheet'));
+    });
+    document.getElementById('iconSearchFolder')?.addEventListener('input', (e) => initIconsFolder(e.target.value));
+    document.getElementById('clearIconSearchBtnFolder')?.addEventListener('click', () => {
+        document.getElementById('iconSearchFolder').value = '';
+        initIconsFolder('');
+    });
+    folderIconTrigger?.addEventListener('click', () => openSheet('iconPickerSheetFolder'));
+</script>
 </body>
 </html>

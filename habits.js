@@ -1,8 +1,11 @@
 // --- ESTADO GLOBAL Y CARGA DE DATOS ---
 let habits = JSON.parse(localStorage.getItem('habits') || '[]');
 let units = JSON.parse(localStorage.getItem('units') || '[]');
+let folders = JSON.parse(localStorage.getItem('folders') || '[]');
 let currentHabitId = null;
 let currentUnitId = null;
+let currentFolderId = null;
+let currentLogEntry = null;
 let selectedDate = new Date().toISOString().split('T')[0];
 let activeSheet = null;
 let previousSheet = null;
@@ -22,14 +25,29 @@ let timerElapsedSeconds = 0;
 let timerRunning = false;
 let currentTimerLog = null;
 
-// --- CONFIGURACIONES DE UI (solo ajustes) ---
+// --- CONFIGURACIONES DE UI ---
 let uiSettings = {
-    fontFeatures: true,      // cv07, cv11
-    cardRadius: 26,          // px
-    timeSlots: false,        // separadores mañana/tarde/noche
-    time24h: true,           // true = 24h, false = 12h AM/PM
-    showIcons: true
+    fontFeatures: true,
+    cardRadius: 26,
+    time24h: true,
+    showIcons: true,
+    showScheduledFirst: false,
+    showUnitLabel: true,
+    showTimeOnCard: true,
+    showButtonOnCard: true,
+    darkLighter: false,
+    accentWhiteText: false,
+    showProgressBar: true,
+    fontFamily: 'Predeterminado',
+    grouping: 'folder',
+    showOverdue: true
 };
+
+// Folders default
+if (folders.length === 0) {
+    folders = [{ id: genId(), name: 'General', icon: '􀓔', showIcons: true, iconColor: '#0076fa' }];
+    localStorage.setItem('folders', JSON.stringify(folders));
+}
 
 // --- CONTROL DE SCROLL DENTRO DE UNA SHEET (HEADERB) ---
 let currentSheetScrollHandler = null;
@@ -141,6 +159,10 @@ function migrateHabits() {
         if (h.isInterval === undefined) h.isInterval = false;
         if (h.intervalUnit === undefined && h.isInterval) h.intervalUnit = 'minutes';
         if (!h.history) h.history = {};
+        if (!h.type) h.type = 'build';
+        if (!h.timeCondition) h.timeCondition = 'at';
+        if (!h.link) h.link = '';
+        if (!h.folderId) h.folderId = folders[0]?.id || '';
     }
     if (modified) localStorage.setItem('units', JSON.stringify(units));
     localStorage.setItem('habits', JSON.stringify(habits));
@@ -164,7 +186,7 @@ function loadAccentColors() {
         else if (accentLight === '#ff2d55' && accentDark === '#e6244a') preset = 'pink';
         presetSelect.value = preset;
         const customRows = document.getElementById('customAccentRows');
-        if (customRows) customRows.style.display = preset === 'custom' ? 'block' : 'none';
+        if (customRows) customRows.style.display = preset === 'custom' ? 'flex' : 'none';
     }
     const lightPicker = document.getElementById('accentLightPicker');
     if (lightPicker) lightPicker.value = accentLight;
@@ -197,7 +219,7 @@ function initAccentPicker() {
     presetSelect.addEventListener('change', (e) => {
         const val = e.target.value;
         if (val === 'custom') {
-            customRows.style.display = 'block';
+            customRows.style.display = 'flex';
         } else {
             customRows.style.display = 'none';
             let light, dark;
@@ -205,7 +227,7 @@ function initAccentPicker() {
                 case 'orange': light = '#ff9500'; dark = '#e58800'; break;
                 case 'yellow': light = '#e9ab00'; dark = '#e6b736'; break;
                 case 'pink': light = '#ff2d55'; dark = '#e6244a'; break;
-                case 'brown': light = '#74543f'; dark = '#e58800'; break;
+                case 'brown': light = '#a37965'; dark = '#b18b72'; break;
                 case 'cyan': light = '#109db6'; dark = '#e6244a'; break;
                 case 'p1': light = '#7290b1'; dark = '#98b8d0'; break;
                 case 'p3': light = '#375e8a'; dark = '#619be8'; break;
@@ -225,14 +247,14 @@ function initAccentPicker() {
         lightPicker.addEventListener('input', (e) => {
             setAccentColors(e.target.value, accentDark);
             presetSelect.value = 'custom';
-            customRows.style.display = 'block';
+            customRows.style.display = 'flex';
         });
     }
     if (darkPicker) {
         darkPicker.addEventListener('input', (e) => {
             setAccentColors(accentLight, e.target.value);
             presetSelect.value = 'custom';
-            customRows.style.display = 'block';
+            customRows.style.display = 'flex';
         });
     }
     if (lightPicker && darkPicker) {
@@ -327,28 +349,36 @@ function toggleHourEnabled() {
     const toggle = document.getElementById('hourToggle');
     const timeRow = document.getElementById('timeRowContainer');
     const timeInput = document.getElementById('hTime');
+    const whenRow = document.getElementById('whenRowContainer');
     if (hourEnabled) {
         toggle.classList.add('active');
         timeRow.style.display = 'flex';
+        whenRow.style.display = 'flex';
         if (!timeInput.value) timeInput.value = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
     } else {
         toggle.classList.remove('active');
         timeRow.style.display = 'none';
+        whenRow.style.display = 'none';
         timeInput.value = '';
     }
 }
-function setHourToggleState(enabled, timeValue) {
+function setHourToggleState(enabled, timeValue, condition = 'at') {
     hourEnabled = enabled;
     const toggle = document.getElementById('hourToggle');
     const timeRow = document.getElementById('timeRowContainer');
     const timeInput = document.getElementById('hTime');
+    const whenRow = document.getElementById('whenRowContainer');
+    const whenSelect = document.getElementById('hTimeCondition');
     if (enabled) {
         toggle.classList.add('active');
         timeRow.style.display = 'flex';
+        whenRow.style.display = 'flex';
         timeInput.value = timeValue || '';
+        if (whenSelect) whenSelect.value = condition;
     } else {
         toggle.classList.remove('active');
         timeRow.style.display = 'none';
+        whenRow.style.display = 'none';
         timeInput.value = '';
     }
 }
@@ -393,7 +423,7 @@ function setIntervalFormState(enabled, savedIntervalUnit) {
     }
 }
 
-// --- ICONOS ---
+// --- ICONOS (global) ---
 let selectedIcon = '􀓔';
 let selectedColor = '#0076ff';
 const colorPicker = document.getElementById('iconColorPicker');
@@ -453,7 +483,16 @@ function loadUISettings() {
     applyCardRadius();
     applyTimeFormatToggleUI();
     applyShowIconsToggleUI();
-    applyTimeSlotsToggleUI();
+    applyScheduledFirstToggle();
+    applyUnitLabelToggle();
+    applyTimeOnCardToggle();
+    applyButtonOnCardToggle();
+    applyDarkLighter();
+    applyAccentWhiteText();
+    applyProgressBarToggle();
+    applyFontFamily();
+    applyGrouping();
+    applyOverdueToggle();
     const radiusInput = document.getElementById('cardRadiusInput');
     if (radiusInput) {
         radiusInput.value = uiSettings.cardRadius;
@@ -464,6 +503,24 @@ function loadUISettings() {
                 saveUISettings();
                 applyCardRadius();
             }
+        });
+    }
+    const fontSelect = document.getElementById('fontSelect');
+    if (fontSelect) {
+        fontSelect.value = uiSettings.fontFamily;
+        fontSelect.addEventListener('change', (e) => {
+            uiSettings.fontFamily = e.target.value;
+            saveUISettings();
+            applyFontFamily();
+        });
+    }
+    const groupingSelect = document.getElementById('groupingSelect');
+    if (groupingSelect) {
+        groupingSelect.value = uiSettings.grouping;
+        groupingSelect.addEventListener('change', (e) => {
+            uiSettings.grouping = e.target.value;
+            saveUISettings();
+            renderHabits();
         });
     }
 }
@@ -497,20 +554,112 @@ function applyShowIconsToggleUI() {
     }
 }
 
-function applyTimeSlotsToggleUI() {
-    const toggle = document.getElementById('timeSlotsToggle');
-    if (toggle) {
-        if (uiSettings.timeSlots) toggle.classList.add('active');
-        else toggle.classList.remove('active');
-    }
-}
-
 function applyTimeFormatToggleUI() {
     const toggle = document.getElementById('timeFormatToggle');
     if (toggle) {
         if (!uiSettings.time24h) toggle.classList.add('active');
         else toggle.classList.remove('active');
     }
+}
+
+function applyScheduledFirstToggle() {
+    const toggle = document.getElementById('scheduledFirstToggle');
+    if (toggle) {
+        if (uiSettings.showScheduledFirst) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+function applyUnitLabelToggle() {
+    const toggle = document.getElementById('unitLabelToggle');
+    if (toggle) {
+        if (uiSettings.showUnitLabel) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+function applyTimeOnCardToggle() {
+    const toggle = document.getElementById('timeOnCardToggle');
+    if (toggle) {
+        if (uiSettings.showTimeOnCard) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+function applyButtonOnCardToggle() {
+    const toggle = document.getElementById('buttonOnCardToggle');
+    if (toggle) {
+        if (uiSettings.showButtonOnCard) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+function applyDarkLighter() {
+    if (uiSettings.darkLighter) {
+        document.body.classList.add('dark-lighter');
+    } else {
+        document.body.classList.remove('dark-lighter');
+    }
+    const toggle = document.getElementById('darkLighterToggle');
+    if (toggle) {
+        if (uiSettings.darkLighter) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+function applyAccentWhiteText() {
+    if (uiSettings.accentWhiteText) {
+        document.body.classList.add('accent-white-text');
+    } else {
+        document.body.classList.remove('accent-white-text');
+    }
+    const toggle = document.getElementById('accentWhiteTextToggle');
+    if (toggle) {
+        if (uiSettings.accentWhiteText) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+function applyProgressBarToggle() {
+    const toggle = document.getElementById('progressBarToggle');
+    if (toggle) {
+        if (uiSettings.showProgressBar) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+function applyFontFamily() {
+    let font = '';
+    switch (uiSettings.fontFamily) {
+        case 'Predeterminado':
+            font = '';
+            break;
+        case 'Helvetica':
+            font = 'Helvetica, sans-serif';
+            break;
+        case 'Roboto':
+            font = 'Roboto, sans-serif';
+            break;
+        case 'Inter':
+            font = 'Inter, -apple-system, "sf", sans-serif';
+            break;
+        default:
+            font = '';
+    }
+    document.body.style.fontFamily = font;
+}
+
+function applyGrouping() {
+    renderHabits();
+}
+
+function applyOverdueToggle() {
+    const toggle = document.getElementById('overdueToggle');
+    if (toggle) {
+        if (uiSettings.showOverdue) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+    renderHabits();
 }
 
 function toggleFontFeatures() {
@@ -526,13 +675,6 @@ function toggleShowIcons() {
     renderHabits();
 }
 
-function toggleTimeSlots() {
-    uiSettings.timeSlots = !uiSettings.timeSlots;
-    saveUISettings();
-    applyTimeSlotsToggleUI();
-    renderHabits();
-}
-
 function toggleTimeFormat() {
     uiSettings.time24h = !uiSettings.time24h;
     saveUISettings();
@@ -544,23 +686,99 @@ function toggleTimeFormat() {
     if (activeSheet === 'historySheet') openHistorySheet();
 }
 
+function toggleScheduledFirst() {
+    uiSettings.showScheduledFirst = !uiSettings.showScheduledFirst;
+    saveUISettings();
+    applyScheduledFirstToggle();
+    renderHabits();
+}
+
+function toggleUnitLabel() {
+    uiSettings.showUnitLabel = !uiSettings.showUnitLabel;
+    saveUISettings();
+    applyUnitLabelToggle();
+    renderHabits();
+}
+
+function toggleTimeOnCard() {
+    uiSettings.showTimeOnCard = !uiSettings.showTimeOnCard;
+    saveUISettings();
+    applyTimeOnCardToggle();
+    renderHabits();
+}
+
+function toggleButtonOnCard() {
+    uiSettings.showButtonOnCard = !uiSettings.showButtonOnCard;
+    saveUISettings();
+    applyButtonOnCardToggle();
+    renderHabits();
+}
+
+function toggleDarkLighter() {
+    uiSettings.darkLighter = !uiSettings.darkLighter;
+    saveUISettings();
+    applyDarkLighter();
+}
+
+function toggleAccentWhiteText() {
+    uiSettings.accentWhiteText = !uiSettings.accentWhiteText;
+    saveUISettings();
+    applyAccentWhiteText();
+}
+
+function toggleProgressBar() {
+    uiSettings.showProgressBar = !uiSettings.showProgressBar;
+    saveUISettings();
+    applyProgressBarToggle();
+    renderHabits();
+}
+
+function toggleOverdue() {
+    uiSettings.showOverdue = !uiSettings.showOverdue;
+    saveUISettings();
+    applyOverdueToggle();
+    renderHabits();
+}
+
 function resetOnlySettings() {
     if (confirm('Restablecer solo la configuración de apariencia y organización? (No se perderán hábitos ni unidades)')) {
         uiSettings = {
             fontFeatures: true,
             cardRadius: 26,
-            timeSlots: false,
             time24h: true,
-            showIcons: true
+            showIcons: true,
+            showScheduledFirst: false,
+            showUnitLabel: true,
+            showTimeOnCard: true,
+            showButtonOnCard: true,
+            darkLighter: false,
+            accentWhiteText: false,
+            showProgressBar: true,
+            fontFamily: 'Predeterminado',
+            grouping: 'folder',
+            showOverdue: true
         };
         saveUISettings();
         applyFontFeatures();
         applyCardRadius();
         applyShowIconsToggleUI();
-        applyTimeSlotsToggleUI();
         applyTimeFormatToggleUI();
+        applyScheduledFirstToggle();
+        applyUnitLabelToggle();
+        applyTimeOnCardToggle();
+        applyButtonOnCardToggle();
+        applyDarkLighter();
+        applyAccentWhiteText();
+        applyProgressBarToggle();
+        applyFontFamily();
+        applyGrouping();
+        applyOverdueToggle();
         const radiusInput = document.getElementById('cardRadiusInput');
         if (radiusInput) radiusInput.value = 26;
+        const fontSelect = document.getElementById('fontSelect');
+        if (fontSelect) fontSelect.value = 'Predeterminado';
+        const groupingSelect = document.getElementById('groupingSelect');
+        if (groupingSelect) groupingSelect.value = 'folder';
         renderHabits();
         if (activeSheet === 'viewSheet' && currentHabitId) openViewById(currentHabitId);
         if (activeSheet === 'historySheet') openHistorySheet();
@@ -579,12 +797,44 @@ function formatTimeByPreference(time24) {
     return `${h12}:${minutes} ${ampm}`;
 }
 
-// --- RENDER HÁBITOS (con agrupación por momentos y ocultar íconos) ---
+// Check if habit is overdue (time in red)
+function isHabitOverdue(habit) {
+    if (!uiSettings.showOverdue) return false;
+    if (!habit.time) return false;
+    if (habit.timeCondition !== 'before') return false;
+    const todayStr = selectedDate;
+    const completed = isHabitCompleted(habit, habit.history[todayStr] || 0);
+    if (completed) return false;
+    const now = new Date();
+    const habitTime = new Date();
+    const [h, m] = habit.time.split(':');
+    habitTime.setHours(parseInt(h), parseInt(m), 0);
+    return now > habitTime;
+}
+
+// Check if habit is completed (considering type)
+function isHabitCompleted(habit, qty) {
+    if (habit.type === 'quit') {
+        return qty <= habit.goal;
+    } else {
+        return qty >= habit.goal;
+    }
+}
+
+// --- RENDER HÁBITOS (con búsqueda, agrupación por carpeta o sin agrupación) ---
+let searchQuery = '';
+
 function getHabitCardHTML(h) {
-    const unit = h.isInterval ? (h.intervalUnit === 'hours' ? 'horas' : 'minutos') : getUnitById(h.unitId).plural;
     const qty = h.history[selectedDate] || 0;
-    const isComplete = qty >= h.goal;
-    const progress = Math.min(100, (qty / h.goal) * 100);
+    const isComplete = isHabitCompleted(h, qty);
+    const overdue = isHabitOverdue(h);
+    let progress;
+    if (h.type === 'quit') {
+        progress = Math.min(100, ((h.goal - qty) / h.goal) * 100);
+    } else {
+        progress = Math.min(100, (qty / h.goal) * 100);
+    }
+    const unit = h.isInterval ? (h.intervalUnit === 'hours' ? 'horas' : 'minutos') : getUnitById(h.unitId).plural;
     let buttonAction, buttonLabel, buttonStyle;
     if (h.isInterval) {
         buttonAction = `openAddQuantitySheetById('${h.id}')`;
@@ -597,20 +847,34 @@ function getHabitCardHTML(h) {
     }
     const qtyDisplay = formatQuantity(qty);
     const goalDisplay = formatQuantity(h.goal);
-    const displayTime = h.time ? formatTimeByPreference(h.time) : '';
+    let displayTime = (uiSettings.showTimeOnCard && h.time) ? formatTimeByPreference(h.time) : '';
+    // Aplicar clase overdue-time si corresponde
+    const timeClass = overdue ? 'overdue-time' : '';
     const iconHtml = uiSettings.showIcons ? `<div class="habitIconCircle" style="color: ${h.iconColor}">${h.icon}</div>` : '';
+    const progressBarHtml = uiSettings.showProgressBar && h.goal > 1 ? `<div class="progress"><div class="habitProgressBar"><div class="habitProgressBarInner" data-w="${progress}%" style="width: ${progress}%; background: ${h.iconColor};"></div></div></div>` : '';
+    const buttonHtml = uiSettings.showButtonOnCard ? `<button class="botoncito" style="${buttonStyle}" onclick="event.stopPropagation(); ${buttonAction}">${buttonLabel}</button>` : '';
+    
+    let progressBadgeHtml = '';
+    if (uiSettings.showUnitLabel && h.goal > 1 && qty > 0 && qty !== h.goal) {
+        if (h.type === 'quit') {
+            progressBadgeHtml = `<div class="habitProgressBadge" style="color: ${h.iconColor}"><div class="cantidad"><div class="hecho">${qtyDisplay} ${unit}</div><div class="meta">${goalDisplay} ${unit}</div></div></div>`;
+        } else {
+            progressBadgeHtml = `<div class="habitProgressBadge" style="color: ${h.iconColor}"><div class="cantidad"><div class="hecho">${qtyDisplay} ${unit}</div><div class="meta">${goalDisplay} ${unit}</div></div></div>`;
+        }
+    }
+    
     return `<div class="habitCard ${isComplete ? 'completed' : ''}" data-id="${h.id}" onclick="openViewById('${h.id}')">
         <div class="supcard">
             ${iconHtml}
             <div class="habitInfo">
                 <div class="details">
                     <div class="dup"><div class="habitName">${h.name}</div></div>
-                    ${displayTime ? `<div class="habitTime">${displayTime}</div>` : ''}
-                    ${h.goal > 1 ? `<div class="progress"><div class="habitProgressBar"><div class="habitProgressBarInner" data-w="${progress}%" style="width: ${progress}%; background: ${h.iconColor};"></div></div></div>` : ''}
-                    ${h.goal > 1 && qty > 0 && qty !== h.goal ? `<div class="habitProgressBadge" style="color: ${h.iconColor}"><div class="cantidad"><div class="hecho">${qtyDisplay} ${unit}</div><div class="meta">${goalDisplay} ${unit}</div></div></div>` : ''}
+                    ${displayTime ? `<div class="habitTime ${timeClass}">${displayTime}</div>` : ''}
+                    ${progressBarHtml}
+                    ${progressBadgeHtml}
                 </div>
             </div>
-            <button class="botoncito" style="${buttonStyle}" onclick="event.stopPropagation(); ${buttonAction}">${buttonLabel}</button>
+            ${buttonHtml}
         </div>
     </div>`;
 }
@@ -625,46 +889,55 @@ function renderHabits(updatedId = null, animate = false, wasComplete = null, isC
     }
     const selectedDateObj = new Date(selectedDate + "T00:00:00");
     let wd = (selectedDateObj.getDay() === 0) ? 6 : selectedDateObj.getDay() - 1;
-    const activeHabits = habits.filter(h => {
+    let activeHabits = habits.filter(h => {
         if (h.dias && !h.dias.includes(wd)) return false;
+        if (searchQuery && !h.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
         return true;
     });
+    
+    // Ordenación
     const sorted = [...activeHabits].sort((a, b) => {
-        const ca = (a.history[selectedDate] || 0) >= a.goal;
-        const cb = (b.history[selectedDate] || 0) >= b.goal;
+        const ca = isHabitCompleted(a, a.history[selectedDate] || 0);
+        const cb = isHabitCompleted(b, b.history[selectedDate] || 0);
         if (ca !== cb) return ca ? 1 : -1;
-        return (a.time || "99:99").localeCompare(b.time || "99:99");
+        
+        if (uiSettings.showScheduledFirst) {
+            const ta = a.time || "99:99";
+            const tb = b.time || "99:99";
+            return ta.localeCompare(tb);
+        } else {
+            const aHasTime = !!a.time;
+            const bHasTime = !!b.time;
+            if (aHasTime !== bHasTime) return aHasTime ? 1 : -1;
+            return (a.time || "99:99").localeCompare(b.time || "99:99");
+        }
     });
 
-    if (!uiSettings.timeSlots) {
-        container.innerHTML = sorted.length ? sorted.map(h => getHabitCardHTML(h)).join('') : `<div style="text-align:center; color:#8e8e93; margin-top:40px;">No hay hábitos para hoy</div>`;
-    } else {
-        const slots = {
-            morning: { label: '🌅 Mañana', habits: [], order: 1, filter: t => t && t < "12:00" },
-            noon: { label: '☀️ Mediodía', habits: [], order: 2, filter: t => t && t >= "12:00" && t < "14:00" },
-            afternoon: { label: '🌤️ Tarde', habits: [], order: 3, filter: t => t && t >= "14:00" && t < "18:00" },
-            night: { label: '🌙 Noche', habits: [], order: 4, filter: t => t && t >= "18:00" }
-        };
+    if (uiSettings.grouping === 'folder') {
+        const foldersWithHabits = {};
+        for (let folder of folders) {
+            foldersWithHabits[folder.id] = { folder, habits: [] };
+        }
+        foldersWithHabits['none'] = { folder: { id: 'none', name: 'Sin carpeta', icon: '􀓔', iconColor: '#8e8e93' }, habits: [] };
         for (let h of sorted) {
-            const time = h.time || "";
-            let placed = false;
-            for (let [key, slot] of Object.entries(slots)) {
-                if (slot.filter(time)) {
-                    slot.habits.push(h);
-                    placed = true;
-                    break;
-                }
-            }
-            if (!placed) slots.morning.habits.push(h);
+            const fid = h.folderId || 'none';
+            if (foldersWithHabits[fid]) foldersWithHabits[fid].habits.push(h);
+            else foldersWithHabits['none'].habits.push(h);
         }
         let html = '';
-        for (let slot of Object.values(slots).sort((a,b)=>a.order-b.order)) {
-            if (slot.habits.length) {
-                html += `<div class="label-table" style="margin: 16px 0 4px 8px;">${slot.label}</div>`;
-                html += slot.habits.map(h => getHabitCardHTML(h)).join('');
+        for (let group of Object.values(foldersWithHabits)) {
+            if (group.habits.length) {
+                const folder = group.folder;
+                const iconHtml = (uiSettings.showIcons && folder.showIcons !== false) ? `<span style="font-size:1.2rem; margin-right:6px;">${folder.icon}</span>` : '';
+                html += `<div class="folder-group" style="margin-bottom:12px;"><div class="folder-header" style="display:flex; align-items:center; margin-bottom:8px; padding-left:8px;">${iconHtml}<span style="font-weight:600;">${folder.name}</span></div>`;
+                html += `<div style="display:flex; flex-direction:column; gap:12px;">${group.habits.map(h => getHabitCardHTML(h)).join('')}</div>`;
+                html += `</div>`;
             }
         }
         container.innerHTML = html || `<div style="text-align:center; color:#8e8e93; margin-top:40px;">No hay hábitos para hoy</div>`;
+    } else {
+        // Sin agrupación
+        container.innerHTML = sorted.length ? sorted.map(h => getHabitCardHTML(h)).join('') : `<div style="text-align:center; color:#8e8e93; margin-top:40px;">No hay hábitos para hoy</div>`;
     }
 
     if (animate && updatedId && oldRect) {
@@ -700,27 +973,64 @@ function renderHabits(updatedId = null, animate = false, wasComplete = null, isC
     updateLongestStreakDisplay();
 }
 
-// --- LOGS ---
-function addLog(habitId, amount, dateStr, timeStr, extra = null) {
+function searchHabits() {
+    const input = document.getElementById('habitSearchInput');
+    searchQuery = input.value;
+    renderHabits();
+}
+
+// --- LOGS (with notes, custom date/time) ---
+function addLog(habitId, amount, dateStr, timeStr, extra = null, notes = '') {
     const habit = habits.find(h => h.id === habitId);
     if (!habit || amount <= 0) return;
     if (!habit.logs) habit.logs = [];
-    const logEntry = { date: dateStr, time: timeStr, amount: amount };
+    const logEntry = { date: dateStr, time: timeStr, amount: amount, notes: notes };
     if (extra && habit.isInterval) {
         logEntry.startTime = extra.startTime;
         logEntry.endTime = extra.endTime;
+        logEntry.startDate = extra.startDate;
+        logEntry.endDate = extra.endDate;
         logEntry.durationSeconds = extra.durationSeconds;
     }
     habit.logs.push(logEntry);
     localStorage.setItem('habits', JSON.stringify(habits));
 }
-function deleteLogsForDate(habitId, dateStr) {
+function deleteLog(habitId, logIndex) {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return;
-    if (!habit.logs) habit.logs = [];
-    habit.logs = habit.logs.filter(log => log.date !== dateStr);
+    habit.logs.splice(logIndex, 1);
     localStorage.setItem('habits', JSON.stringify(habits));
+    if (activeSheet === 'logViewSheet') closeSheet('logViewSheet');
+    if (activeSheet === 'historySheet') openHistorySheet();
+    renderHabits();
 }
+function openLogView(log, index, habitId) {
+    currentLogEntry = { log, index, habitId };
+    const habit = habits.find(h => h.id === habitId);
+    const unit = habit.isInterval ? (habit.intervalUnit === 'hours' ? 'horas' : 'minutos') : getUnitById(habit.unitId).plural;
+    document.getElementById('logTypeValue').textContent = habit.isInterval ? 'Intervalo' : 'Numérico';
+    document.getElementById('logDateValue').textContent = log.date;
+    document.getElementById('logTimeValue').textContent = log.time || '-';
+    document.getElementById('logAmountValue').textContent = `${formatQuantity(log.amount)} ${unit}`;
+    document.getElementById('logNotesValue').textContent = log.notes || '-';
+    const intervalContainer = document.getElementById('logIntervalContainer');
+    if (habit.isInterval && log.startTime) {
+        intervalContainer.style.display = 'block';
+        document.getElementById('logStartDateTime').textContent = `${log.startDate || log.date} ${log.startTime || ''}`;
+        document.getElementById('logEndDateTime').textContent = `${log.endDate || log.date} ${log.endTime || ''}`;
+    } else {
+        intervalContainer.style.display = 'none';
+    }
+    openSheet('logViewSheet');
+}
+function deleteCurrentLog() {
+    if (currentLogEntry && confirm('¿Eliminar este registro?')) {
+        deleteLog(currentLogEntry.habitId, currentLogEntry.index);
+        currentLogEntry = null;
+        closeSheet('logViewSheet');
+    }
+}
+
 function openHistorySheet() {
     if (!currentHabitId) return;
     const habit = habits.find(h => h.id === currentHabitId);
@@ -730,15 +1040,17 @@ function openHistorySheet() {
     container.innerHTML = '';
     const sorted = [...logs].reverse();
     const unit = habit.isInterval ? (habit.intervalUnit === 'hours' ? 'horas' : 'minutos') : getUnitById(habit.unitId).plural;
-    sorted.forEach(log => {
+    sorted.forEach((log, idx) => {
         let amountText = `${formatQuantity(log.amount)} ${unit}`;
-        if (habit.isInterval && log.startTime && log.endTime) {
-            amountText = `${formatDuration(log.durationSeconds)}`;
+        if (habit.isInterval && log.startTime && log.durationSeconds) {
+            amountText = formatDuration(log.durationSeconds);
         }
         const displayTime = log.time ? formatTimeByPreference(log.time) : '';
         const row = document.createElement('div');
         row.className = 'row';
+        row.style.cursor = 'pointer';
         row.innerHTML = `<div><div class="history-date">${log.date}</div><div class="history-time">${displayTime}</div></div><div class="history-amount">${amountText}</div>`;
+        row.onclick = () => openLogView(log, logs.length - 1 - idx, currentHabitId);
         container.appendChild(row);
     });
     openSheet('historySheet');
@@ -814,6 +1126,28 @@ function openView(habit) {
     } else if (existingTimeElem && !habit.time) {
         existingTimeElem.remove();
     }
+    const linkRow = document.getElementById('vLinkRow');
+    const linkValue = document.getElementById('vLinkValue');
+    if (habit.link) {
+        linkRow.style.display = 'flex';
+        linkValue.href = habit.link;
+        linkValue.textContent = habit.link;
+    } else {
+        linkRow.style.display = 'none';
+    }
+    const folderRow = document.getElementById('vFolderRow');
+    const folderValue = document.getElementById('vFolderValue');
+    if (habit.folderId) {
+        const folder = folders.find(f => f.id === habit.folderId);
+        if (folder) {
+            folderRow.style.display = 'flex';
+            folderValue.innerHTML = `${uiSettings.showIcons && folder.showIcons !== false ? folder.icon + ' ' : ''}${folder.name}`;
+        } else {
+            folderRow.style.display = 'none';
+        }
+    } else {
+        folderRow.style.display = 'none';
+    }
     openSheet('viewSheet');
 }
 function saveHabit() {
@@ -835,12 +1169,16 @@ function saveHabit() {
         unitId = document.getElementById('hUnitSelect').value;
         intervalUnit = null;
     }
+    const type = document.getElementById('hTypeSelect').value;
+    const timeCondition = document.getElementById('hTimeCondition') ? document.getElementById('hTimeCondition').value : 'at';
+    const link = document.getElementById('hLink').value.trim();
+    const folderId = document.getElementById('hFolderSelect').value;
     const habit = {
         id, name, goal, step: parseFloat(document.getElementById('hStep').value) || 1,
         time: hourEnabled ? document.getElementById('hTime').value : null,
         icon: selectedIcon, iconColor: selectedColor, history, logs,
         dias: [...diasSeleccionados], unitId, description: document.getElementById('hDescription').value,
-        isInterval, intervalUnit
+        isInterval, intervalUnit, type, timeCondition, link, folderId
     };
     if (existing) {
         const idx = habits.findIndex(h => h.id === id);
@@ -871,9 +1209,10 @@ function updateQtyById(id, dir) {
     const oldQty = h.history[selectedDate] || 0;
     const increment = dir * h.step;
     if (increment <= 0) return;
-    const newQty = oldQty + increment;
-    const wasComplete = oldQty >= h.goal;
-    const isComplete = newQty >= h.goal;
+    let newQty = oldQty + increment;
+    if (h.type === 'quit' && newQty > h.goal) newQty = h.goal;
+    const wasComplete = isHabitCompleted(h, oldQty);
+    const isComplete = isHabitCompleted(h, newQty);
     h.history[selectedDate] = newQty;
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
@@ -914,27 +1253,23 @@ function setComplete() {
     const h = habits.find(h => h.id === currentHabitId);
     if (!h) return;
     const oldQty = h.history[selectedDate] || 0;
-    const needed = h.goal - oldQty;
-    if (needed <= 0) return;
-    if (h.isInterval) {
+    let needed;
+    if (h.type === 'quit') {
+        needed = Math.max(0, oldQty - h.goal);
+        if (needed <= 0) return;
         h.history[selectedDate] = h.goal;
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
-        addLog(currentHabitId, needed, selectedDate, timeStr);
-        localStorage.setItem('habits', JSON.stringify(habits));
-        document.getElementById('vQtyManual').value = h.goal;
-        renderHabits(h.id, true, false, true);
-        document.getElementById('streakNumberInView').textContent = `${getStreak(h)} días`;
     } else {
+        needed = h.goal - oldQty;
+        if (needed <= 0) return;
         h.history[selectedDate] = h.goal;
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
-        addLog(currentHabitId, needed, selectedDate, timeStr);
-        localStorage.setItem('habits', JSON.stringify(habits));
-        document.getElementById('vQtyManual').value = h.goal;
-        renderHabits(h.id, true, false, true);
-        document.getElementById('streakNumberInView').textContent = `${getStreak(h)} días`;
     }
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+    addLog(currentHabitId, needed, selectedDate, timeStr);
+    localStorage.setItem('habits', JSON.stringify(habits));
+    document.getElementById('vQtyManual').value = h.goal;
+    renderHabits(h.id, true, false, true);
+    document.getElementById('streakNumberInView').textContent = `${getStreak(h)} días`;
 }
 function openAddQuantitySheetById(habitId) {
     currentHabitId = habitId;
@@ -952,26 +1287,34 @@ function openAddQuantitySheet() {
         const defaultTime = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
         document.getElementById('intervalStart').value = defaultTime;
         document.getElementById('intervalEnd').value = defaultTime;
+        document.getElementById('intervalStartDate').value = selectedDate;
+        document.getElementById('intervalEndDate').value = selectedDate;
         updateIntervalPreview();
         document.getElementById('intervalStart').onchange = updateIntervalPreview;
         document.getElementById('intervalEnd').onchange = updateIntervalPreview;
+        document.getElementById('intervalStartDate').onchange = updateIntervalPreview;
+        document.getElementById('intervalEndDate').onchange = updateIntervalPreview;
     } else {
         numericDiv.style.display = 'block';
         intervalDiv.style.display = 'none';
         document.getElementById('addQtyInput').value = '0';
+        document.getElementById('addQtyNotes').value = '';
+        document.getElementById('addQtyDate').value = selectedDate;
+        document.getElementById('addQtyTime').value = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
     }
     openSheet('addQuantitySheet');
 }
 function updateIntervalPreview() {
-    const start = document.getElementById('intervalStart').value;
-    const end = document.getElementById('intervalEnd').value;
-    if (!start || !end) return;
-    const startSec = timeToSeconds(start);
-    let endSec = timeToSeconds(end);
-    if (endSec < startSec) endSec += 24*3600;
-    const diffSec = endSec - startSec;
+    const startDate = document.getElementById('intervalStartDate').value;
+    const endDate = document.getElementById('intervalEndDate').value;
+    const startTime = document.getElementById('intervalStart').value;
+    const endTime = document.getElementById('intervalEnd').value;
+    if (!startDate || !endDate || !startTime || !endTime) return;
+    const start = new Date(`${startDate}T${startTime}`);
+    let end = new Date(`${endDate}T${endTime}`);
+    const diffSec = (end - start) / 1000;
     const previewDiv = document.getElementById('timerLogPreview');
-    if (previewDiv) previewDiv.textContent = `Duración: ${formatDuration(diffSec)}`;
+    if (previewDiv) previewDiv.textContent = `Duración: ${formatDuration(Math.max(0, diffSec))}`;
 }
 function timeToSeconds(time) {
     const [h,m,s = 0] = time.split(':').map(Number);
@@ -981,23 +1324,26 @@ function confirmAddQuantity() {
     const habit = habits.find(h => h.id === currentHabitId);
     if (!habit) return;
     if (habit.isInterval) {
-        let start = document.getElementById('intervalStart').value;
-        let end = document.getElementById('intervalEnd').value;
-        if (!start || !end) return;
-        let startSec = timeToSeconds(start);
-        let endSec = timeToSeconds(end);
-        if (endSec < startSec) endSec += 24*3600;
-        const durationSec = endSec - startSec;
-        if (durationSec <= 0) return alert('La hora de fin debe ser posterior a la de inicio');
+        let startDate = document.getElementById('intervalStartDate').value;
+        let endDate = document.getElementById('intervalEndDate').value;
+        let startTime = document.getElementById('intervalStart').value;
+        let endTime = document.getElementById('intervalEnd').value;
+        let notes = document.getElementById('addQtyNotesInterval').value;
+        if (!startDate || !endDate || !startTime || !endTime) return;
+        let start = new Date(`${startDate}T${startTime}`);
+        let end = new Date(`${endDate}T${endTime}`);
+        let durationSec = (end - start) / 1000;
+        if (durationSec <= 0) return alert('La fecha/hora de fin debe ser posterior a la de inicio');
         let amount;
         if (habit.intervalUnit === 'hours') amount = durationSec / 3600;
         else amount = durationSec / 60;
         const oldQty = habit.history[selectedDate] || 0;
-        const newQty = oldQty + amount;
+        let newQty = oldQty + amount;
+        if (habit.type === 'quit' && newQty > habit.goal) newQty = habit.goal;
         habit.history[selectedDate] = newQty;
         const now = new Date();
         const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
-        addLog(currentHabitId, amount, selectedDate, timeStr, { startTime: start, endTime: end, durationSeconds: durationSec });
+        addLog(currentHabitId, amount, selectedDate, timeStr, { startTime: startTime, endTime: endTime, startDate: startDate, endDate: endDate, durationSeconds: durationSec }, notes);
         localStorage.setItem('habits', JSON.stringify(habits));
         renderHabits(habit.id, true);
         if (activeSheet === 'viewSheet') {
@@ -1008,16 +1354,22 @@ function confirmAddQuantity() {
     } else {
         let addValue = parseFloat(document.getElementById('addQtyInput').value);
         if (isNaN(addValue) || addValue <= 0) { closeSheet('addQuantitySheet'); return; }
-        const oldQty = habit.history[selectedDate] || 0;
-        const newQty = oldQty + addValue;
-        habit.history[selectedDate] = newQty;
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
-        addLog(currentHabitId, addValue, selectedDate, timeStr);
+        const customDate = document.getElementById('addQtyDate').value;
+        const customTime = document.getElementById('addQtyTime').value;
+        const notes = document.getElementById('addQtyNotes').value;
+        const oldQty = habit.history[customDate] || 0;
+        let newQty = oldQty + addValue;
+        if (habit.type === 'quit' && newQty > habit.goal) newQty = habit.goal;
+        habit.history[customDate] = newQty;
+        addLog(currentHabitId, addValue, customDate, customTime, null, notes);
         localStorage.setItem('habits', JSON.stringify(habits));
-        document.getElementById('vQtyManual').value = newQty;
-        renderHabits(habit.id, true, oldQty >= habit.goal, newQty >= habit.goal);
-        document.getElementById('streakNumberInView').textContent = `${getStreak(habit)} días`;
+        if (customDate === selectedDate) {
+            document.getElementById('vQtyManual').value = newQty;
+            renderHabits(habit.id, true, oldQty >= habit.goal, newQty >= habit.goal);
+            document.getElementById('streakNumberInView').textContent = `${getStreak(habit)} días`;
+        } else {
+            renderHabits();
+        }
         closeSheet('addQuantitySheet');
     }
 }
@@ -1030,7 +1382,7 @@ function getStreak(h) {
     while (true) {
         let key = curr.toISOString().split('T')[0];
         let qty = h.history[key] || 0;
-        if (qty >= h.goal - 1e-9) streak++;
+        if (isHabitCompleted(h, qty)) streak++;
         else {
             let todayStr = new Date().toISOString().split('T')[0];
             if (key !== todayStr) break;
@@ -1049,7 +1401,7 @@ function getLongestStreakForHabit(habit) {
     let prevDate = null;
     for (let date of dates) {
         let qty = habit.history[date] || 0;
-        let isComplete = qty >= habit.goal - 1e-9;
+        let isComplete = isHabitCompleted(habit, qty);
         if (isComplete) {
             if (prevDate) {
                 let diff = (new Date(date) - new Date(prevDate)) / (1000*3600*24);
@@ -1117,11 +1469,12 @@ function renderCalendar() {
         const key = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         let qty = habit.history[key] || 0;
         let progress = Math.min(1, qty / habit.goal);
+        if (habit.type === 'quit') progress = Math.min(1, (habit.goal - qty) / habit.goal);
         const radius = 18, circ = 2 * Math.PI * radius, offset = circ - (progress * circ);
         const cell = document.createElement('div');
         cell.className = 'dayCell';
         cell.innerHTML = `<svg class="ring" viewBox="0 0 44 44"><circle class="ring-bg" cx="22" cy="22" r="${radius}"></circle><circle class="ring-fg" cx="22" cy="22" r="${radius}" style="stroke-dasharray: ${circ}; stroke-dashoffset: ${offset}; color: ${habit.iconColor}; opacity: ${qty>0?1:0}"></circle></svg><span class="dayNum">${d}</span>`;
-        if (qty >= habit.goal - 1e-9) { cell.querySelector('.dayNum').style.color = habit.iconColor; cell.querySelector('.dayNum').style.fontWeight = '700'; }
+        if (isHabitCompleted(habit, qty)) { cell.querySelector('.dayNum').style.color = habit.iconColor; cell.querySelector('.dayNum').style.fontWeight = '700'; }
         grid.appendChild(cell);
     }
 }
@@ -1133,7 +1486,7 @@ function drawLineChartSVG() {
     if (!svg) return;
     let values = [];
     let today = new Date(); today.setHours(0,0,0,0);
-    for (let i=6; i>=0; i--) { let d = new Date(today); d.setDate(today.getDate()-i); let key = d.toISOString().split('T')[0]; let qty = habit.history[key] || 0; values.push(Math.min(100, (qty/habit.goal)*100)); }
+    for (let i=6; i>=0; i--) { let d = new Date(today); d.setDate(today.getDate()-i); let key = d.toISOString().split('T')[0]; let qty = habit.history[key] || 0; let p = Math.min(100, (qty/habit.goal)*100); if (habit.type === 'quit') p = Math.min(100, ((habit.goal - qty)/habit.goal)*100); values.push(p); }
     const w=400, hh=200, pad=30, stepX=(w-2*pad)/6, scaleY=(hh-2*pad)/100;
     const points = values.map((v,i)=> ({x:pad+i*stepX, y:hh-pad-v*scaleY}));
     const pathD = points.map((p,i)=> i===0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`).join(' ');
@@ -1203,6 +1556,100 @@ function deleteUnit() {
     }
 }
 
+function openFoldersSheet() {
+    const container = document.getElementById('foldersList');
+    container.innerHTML = '';
+    folders.forEach(folder => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.style.cursor = 'pointer';
+        const iconColor = folder.iconColor || '#0076fa';
+        row.innerHTML = `<span><span style="margin-right:8px; color:${iconColor};">${folder.icon}</span> ${folder.name}</span><span class="chevron">􀆊</span>`;
+        row.onclick = () => openFolderEditSheet(folder.id);
+        container.appendChild(row);
+    });
+    openSheet('foldersSheet');
+}
+function openFolderEditSheet(folderId = null) {
+    currentFolderId = folderId;
+    const deleteRow = document.getElementById('deleteFolderRow');
+    if (folderId) {
+        const folder = folders.find(f => f.id === folderId);
+        document.getElementById('folderName').value = folder.name;
+        const trigger = document.getElementById('folderIconTrigger');
+        trigger.textContent = folder.icon;
+        trigger.style.color = folder.iconColor || '#0076fa';
+        folderSelectedIcon = folder.icon;
+        folderSelectedColor = folder.iconColor || '#0076fa';
+        // Actualizar también el picker de color para que refleje el color actual
+        const folderColorPicker = document.getElementById('folderIconColorPicker');
+        if (folderColorPicker) folderColorPicker.value = folderSelectedColor;
+        const preview = document.getElementById('folderColorPreview');
+        if (preview) preview.style.background = folderSelectedColor;
+        const toggle = document.getElementById('folderShowIconsToggle');
+        if (folder.showIcons !== false) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+        deleteRow.style.display = 'block';
+    } else {
+        document.getElementById('folderName').value = '';
+        const trigger = document.getElementById('folderIconTrigger');
+        trigger.textContent = '􀓔';
+        trigger.style.color = '#0076fa';
+        folderSelectedIcon = '􀓔';
+        folderSelectedColor = '#0076fa';
+        document.getElementById('folderShowIconsToggle').classList.add('active');
+        deleteRow.style.display = 'none';
+    }
+    openSheet('folderEditSheet');
+}
+function saveFolder() {
+    const name = document.getElementById('folderName').value.trim();
+    if (!name) return alert('Nombre obligatorio');
+    const showIcons = document.getElementById('folderShowIconsToggle').classList.contains('active');
+    if (currentFolderId) {
+        const folder = folders.find(f => f.id === currentFolderId);
+        folder.name = name;
+        folder.icon = folderSelectedIcon;
+        folder.iconColor = folderSelectedColor;
+        folder.showIcons = showIcons;
+    } else {
+        folders.push({ id: genId(), name, icon: folderSelectedIcon, iconColor: folderSelectedColor, showIcons });
+    }
+    localStorage.setItem('folders', JSON.stringify(folders));
+    populateFolderSelect();
+    closeSheet('folderEditSheet');
+    openFoldersSheet();
+    renderHabits();
+}
+function deleteFolder() {
+    if (!currentFolderId) return;
+    if (confirm('¿Eliminar esta carpeta? Los hábitos quedarán sin carpeta.')) {
+        folders = folders.filter(f => f.id !== currentFolderId);
+        habits.forEach(h => { if (h.folderId === currentFolderId) h.folderId = ''; });
+        localStorage.setItem('folders', JSON.stringify(folders));
+        localStorage.setItem('habits', JSON.stringify(habits));
+        populateFolderSelect();
+        closeSheet('folderEditSheet');
+        openFoldersSheet();
+        renderHabits();
+    }
+}
+function toggleFolderShowIcons() {
+    const toggle = document.getElementById('folderShowIconsToggle');
+    toggle.classList.toggle('active');
+}
+function populateFolderSelect() {
+    const select = document.getElementById('hFolderSelect');
+    if (!select) return;
+    select.innerHTML = '<option value="">Sin carpeta</option>';
+    folders.forEach(folder => {
+        const option = document.createElement('option');
+        option.value = folder.id;
+        option.textContent = `${folder.icon} ${folder.name}`;
+        select.appendChild(option);
+    });
+}
+
 // --- GESTIÓN DE HÁBITOS (ELIMINAR) ---
 function openHabitsManagement() {
     const container = document.getElementById('habitsManagementList');
@@ -1231,6 +1678,13 @@ function deleteAllHabits() {
         closeSheet('habitsManagementSheet');
     }
 }
+function deleteLogsForDate(habitId, dateStr) {
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit) return;
+    if (!habit.logs) habit.logs = [];
+    habit.logs = habit.logs.filter(log => log.date !== dateStr);
+    localStorage.setItem('habits', JSON.stringify(habits));
+}
 
 // --- RESET FORM ---
 function resetCreateForm() {
@@ -1240,6 +1694,8 @@ function resetCreateForm() {
     document.getElementById('hDescription').value = '';
     document.getElementById('hGoal').value = '';
     document.getElementById('hStep').value = '';
+    document.getElementById('hLink').value = '';
+    document.getElementById('hTypeSelect').value = 'build';
     setHourToggleState(false, '');
     setIntervalFormState(false, null);
     selectedIcon = '􀓔';
@@ -1250,6 +1706,7 @@ function resetCreateForm() {
     if (preview) preview.style.background = selectedColor;
     document.getElementById('clearHNameBtn').style.display = 'none';
     populateUnitSelect();
+    populateFolderSelect();
 }
 function editHabit() {
     const habit = habits.find(h => h.id === currentHabitId);
@@ -1259,7 +1716,9 @@ function editHabit() {
     document.getElementById('hDescription').value = habit.description || '';
     document.getElementById('hGoal').value = habit.goal;
     document.getElementById('hStep').value = habit.step;
-    setHourToggleState(!!habit.time, habit.time || '');
+    document.getElementById('hLink').value = habit.link || '';
+    document.getElementById('hTypeSelect').value = habit.type || 'build';
+    setHourToggleState(!!habit.time, habit.time || '', habit.timeCondition || 'at');
     setIntervalFormState(habit.isInterval || false, habit.intervalUnit || null);
     selectedIcon = habit.icon;
     selectedColor = habit.iconColor;
@@ -1269,13 +1728,14 @@ function editHabit() {
     diasSeleccionados = habit.dias ? [...habit.dias] : [0,1,2,3,4,5,6];
     actualizarUIDias();
     if (!habit.isInterval && habit.unitId) document.getElementById('hUnitSelect').value = habit.unitId;
+    if (habit.folderId) document.getElementById('hFolderSelect').value = habit.folderId;
     closeSheet('viewSheet', () => openSheet('createSheet'));
 }
 function handleCloseHabit() { closeSheet(activeSheet); }
 
 // --- EXPORTAR / IMPORTAR / BORRAR DATOS ---
 function exportData() {
-    const data = { habits, units };
+    const data = { habits, units, folders };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1296,11 +1756,14 @@ function importData(event) {
             if (confirm('¿Reemplazar todos los datos actuales?')) {
                 if (imported.habits) habits = imported.habits;
                 if (imported.units) units = imported.units;
+                if (imported.folders) folders = imported.folders;
                 localStorage.setItem('habits', JSON.stringify(habits));
                 localStorage.setItem('units', JSON.stringify(units));
+                localStorage.setItem('folders', JSON.stringify(folders));
                 migrateHabits();
                 renderHabits();
                 populateUnitSelect();
+                populateFolderSelect();
                 alert('Datos importados correctamente');
                 closeSheet('settingsSheet');
             }
@@ -1312,10 +1775,13 @@ function confirmDeleteAllData() {
     if (confirm('⚠️ Esto eliminará TODOS los hábitos y unidades. ¿Continuar?')) {
         habits = [];
         units = [{ id: genId(), singular: 'vez', plural: 'veces' }];
+        folders = [{ id: genId(), name: 'General', icon: '􀓔', showIcons: true, iconColor: '#0076fa' }];
         localStorage.setItem('habits', '[]');
         localStorage.setItem('units', JSON.stringify(units));
+        localStorage.setItem('folders', JSON.stringify(folders));
         renderHabits();
         populateUnitSelect();
+        populateFolderSelect();
         closeSheet('settingsSheet');
     }
 }
@@ -1383,14 +1849,17 @@ function saveTimerLog() {
         return;
     }
     const oldQty = habit.history[selectedDate] || 0;
-    const newQty = oldQty + amount;
+    let newQty = oldQty + amount;
+    if (habit.type === 'quit' && newQty > habit.goal) newQty = habit.goal;
     habit.history[selectedDate] = newQty;
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
     addLog(currentHabitId, amount, selectedDate, timeStr, {
         startTime: currentTimerLog.startTime,
         endTime: currentTimerLog.endTime,
-        durationSeconds: currentTimerLog.durationSeconds
+        durationSeconds: currentTimerLog.durationSeconds,
+        startDate: selectedDate,
+        endDate: selectedDate
     });
     localStorage.setItem('habits', JSON.stringify(habits));
     renderHabits(habit.id, true);
@@ -1445,6 +1914,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHabits();
     populateUnitSelect();
     populateIntervalUnitSelect();
+    populateFolderSelect();
     const toggleDiv = document.getElementById('hourToggle');
     if (toggleDiv) toggleDiv.addEventListener('click', (e) => { e.stopPropagation(); toggleHourEnabled(); });
     document.getElementById('settingsBtn')?.addEventListener('click', () => openSheet('settingsSheet'));
@@ -1464,6 +1934,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (iconTriggerEl) {
         iconTriggerEl.addEventListener('click', () => openSheet('iconPickerSheet'));
     }
+    const folderIconTrigger = document.getElementById('folderIconTrigger');
+    if (folderIconTrigger) {
+        folderIconTrigger.addEventListener('click', () => openSheet('iconPickerSheetFolder'));
+    }
     
     window.addEventListener('scroll', handleTopbarOnScroll);
     handleTopbarOnScroll();
@@ -1478,6 +1952,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     loadUISettings();
     updateLongestStreakDisplay();
+    
+    const searchInput = document.getElementById('habitSearchInput');
+    if (searchInput) searchInput.addEventListener('input', searchHabits);
 });
 
 function populateUnitSelect() {
@@ -1561,6 +2038,77 @@ window.toggleIntervalForm = toggleIntervalForm;
 window.confirmAddQuantity = confirmAddQuantity;
 window.toggleFontFeatures = toggleFontFeatures;
 window.toggleShowIcons = toggleShowIcons;
-window.toggleTimeSlots = toggleTimeSlots;
 window.toggleTimeFormat = toggleTimeFormat;
+window.toggleScheduledFirst = toggleScheduledFirst;
+window.toggleUnitLabel = toggleUnitLabel;
+window.toggleTimeOnCard = toggleTimeOnCard;
+window.toggleButtonOnCard = toggleButtonOnCard;
+window.toggleDarkLighter = toggleDarkLighter;
+window.toggleAccentWhiteText = toggleAccentWhiteText;
+window.toggleProgressBar = toggleProgressBar;
+window.toggleOverdue = toggleOverdue;
 window.resetOnlySettings = resetOnlySettings;
+window.openFoldersSheet = openFoldersSheet;
+window.openFolderEditSheet = openFolderEditSheet;
+window.saveFolder = saveFolder;
+window.deleteFolder = deleteFolder;
+window.toggleFolderShowIcons = toggleFolderShowIcons;
+window.deleteCurrentLog = deleteCurrentLog;
+
+// Folder icon picker globals
+let folderSelectedIcon = '􀓔';
+let folderSelectedColor = '#0076ff';
+const folderColorPicker = document.getElementById('folderIconColorPicker');
+const folderColorPreview = document.getElementById('folderColorPreview');
+if (folderColorPicker) {
+    folderColorPicker.addEventListener('input', (e) => {
+        folderSelectedColor = e.target.value;
+        folderColorPreview.style.background = folderSelectedColor;
+        const trigger = document.getElementById('folderIconTrigger');
+        if (trigger) trigger.style.color = folderSelectedColor;
+        initIconsFolder();
+    });
+}
+function initIconsFolder(filter = "") {
+    const grid = document.getElementById('iconGridFolder');
+    if (!grid || typeof iconData === 'undefined') return;
+    grid.innerHTML = "";
+    const searchLower = filter.toLowerCase();
+    for (const [category, icons] of Object.entries(iconData)) {
+        const filtered = icons.filter(icon => icon.name.toLowerCase().includes(searchLower));
+        if (filtered.length) {
+            const catWrap = document.createElement('div');
+            catWrap.className = 'iconCategory';
+            catWrap.innerHTML = `<div class="categoryTitle">${category}</div>`;
+            const subGrid = document.createElement('div');
+            subGrid.className = 'iconGridSub';
+            filtered.forEach(icon => {
+                const div = document.createElement('div');
+                div.className = 'iconItem';
+                div.textContent = icon.char;
+                if (icon.char === folderSelectedIcon) div.classList.add('selected');
+                div.style.color = icon.char === folderSelectedIcon ? folderSelectedColor : '#8e8e93';
+                div.onclick = () => {
+                    folderSelectedIcon = icon.char;
+                    const trigger = document.getElementById('folderIconTrigger');
+                    if (trigger) {
+                        trigger.textContent = folderSelectedIcon;
+                        trigger.style.color = folderSelectedColor;
+                    }
+                    closeSheet('iconPickerSheetFolder', () => openSheet('folderEditSheet'));
+                };
+                subGrid.appendChild(div);
+            });
+            catWrap.appendChild(subGrid);
+            grid.appendChild(catWrap);
+        }
+    }
+}
+document.getElementById('confirmIconBtnFolder')?.addEventListener('click', () => {
+    closeSheet('iconPickerSheetFolder', () => openSheet('folderEditSheet'));
+});
+document.getElementById('iconSearchFolder')?.addEventListener('input', (e) => initIconsFolder(e.target.value));
+document.getElementById('clearIconSearchBtnFolder')?.addEventListener('click', () => {
+    document.getElementById('iconSearchFolder').value = '';
+    initIconsFolder('');
+});
