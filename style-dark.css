@@ -8,12 +8,13 @@
 }
 
 body {
-    background: #040404;
+    background: #000;
     color: var(--text-main);
 }
 
 #dateSelector input {
     color: #909090; 
+    background-color: #1c1c1edc;
 }
 #dateSelector input:focus{
     color: #ffffff99; 
@@ -164,7 +165,7 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
     color: var(--text-muted);
 }
 .habitCard {
-    background-color: #1c1c1b;
+    background-color: #121212;
 }
 .habitCard.completed {
     opacity: 0.5;
@@ -195,8 +196,8 @@ body:has(#iconPickerSheet.active) #routineViewSheet {
 }
 
 header {
-    background: rgba(0, 0, 0, 0.068);
-    backdrop-filter: blur(12px);
+    background: #1a1a1cad;
+    backdrop-filter: blur(18px);
 }
 
 .bigt {
@@ -308,7 +309,7 @@ hr{
 }
 
 .topbar {
-    background: rgba(0, 0, 0, 0.468);
+    background: #000000;
     backdrop-filter: blur(12px);
 }
 /* Toggle switch */
@@ -362,17 +363,8 @@ hr{
     border-bottom: 0.9px solid #d8d8d831;
 }
 
-/* ===== TOPBAR MINIMIZADO (SCROLL iOS) ===== */
-.topbar {
-    transition: all 0.25s ease-out;
-    background: #0404046f;
-    border-bottom: 0.9px solid transparent;
-    position: relative;
-}
-
 .topbar.minimized {
-    background: #1c1c1edc;
-    backdrop-filter: blur(18px);
+    background: transparent;
     border-bottom: 0.9px solid #d8d8d831;
 }
 
@@ -403,10 +395,6 @@ hr{
     opacity: 1;
 }
 
-/* Ajuste para el header cuando hay scroll */
-header {
-    transition: background 0.2s;
-}
 .clear-field {
             color: #fff;
         }
@@ -460,11 +448,9 @@ header {
 .lineChartContainer{
     background-color:#ffffff;
 }
-}
-
 /* Search bar */
 .search-habits {
-    background: #2c2c2d;
+    background: #2c2c2ead;
 }
 .search-habits span {
     color: var(--text-muted);
@@ -475,3 +461,5 @@ header {
 .search-habits input::placeholder {
     color: var(--text-muted);
 }
+}
+

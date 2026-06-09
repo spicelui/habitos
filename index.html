@@ -22,25 +22,45 @@
   <div class="topbar">
     <div class="actionsbar">
         <div class="btn-action" onclick="openHabitsManagement()">Editar</div>
+        <div id="dateSelector">
+            <input type="date" id="selectedDate">
+        </div>
         <div class="settings-actions">
             <button class="btn-act" id="settingsBtn">􀍟</button>
             <button class="btn-act" id="addHabitBtn">􀁍</button>
         </div>
     </div>
-    <div class="bigt">Routine</div>
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
-        <div id="dateSelector">
-            <input type="date" id="selectedDate">
-        </div>
-    </div>
-  </div>
-</header>
+    <div class="bigt">Habits</div>
+    
     <div class="search-habits">
         <span>􀊫</span>
         <input type="text" id="habitSearchInput" placeholder="Buscar" autocomplete="off">
     </div>
+  </div>
 
-    <main id="habitsContainer"></main>
+  <!--<div class="tabbar">
+    <div class="current tab">
+        <div class="icon-tab">􀍟</div>
+        <div class="label-tab">Hábitos</div>
+    </div>
+    <div class="tab">
+        <div class="icon-tab">􀍟</div>
+        <div class="label-tab">Hábitos</div>
+    </div>
+    <div class="tab">
+        <div class="icon-tab">􀍟</div>
+        <div class="label-tab">Hábitos</div>
+    </div>
+    <div class="tab">
+        <div class="icon-tab">􀍟</div>
+        <div class="label-tab">Hábitos</div>
+    </div>
+  </div>-->
+</header>
+
+<main id="habitsContainer">
+    
+</main>
 
 <!-- SHEET CREAR / EDITAR HÁBITO -->
 <div id="createSheet" class="sheetContent">
@@ -62,16 +82,9 @@
                     <button type="button" class="clear-field" id="clearHNameBtn" style="display:none;">􀁡</button>
                 </div>
             </div>
-        </div>
-
-        <div class="label-table">Tipo</div>
-        <div class="table">
             <div class="row">
-                <span class="label">Tipo de hábito</span>
-                <select id="hTypeSelect" class="select">
-                    <option value="build">Construir (alcanzar meta)</option>
-                    <option value="quit">Dejar (no superar meta)</option>
-                </select>
+                <span class="label">Carpeta</span>
+                <select id="hFolderSelect" class="select"></select>
             </div>
         </div>
 
@@ -133,25 +146,13 @@
             </div>
         </div>
 
-        <div class="label-table">Organización</div>
-        <div class="table">
-            <div class="row">
-                <span class="label">Carpeta</span>
-                <select id="hFolderSelect" class="select"></select>
-            </div>
-        </div>
-
-        <div class="label-table">Enlace</div>
-        <div class="table">
-            <div class="row">
-                <input type="url" id="hLink" class="field" placeholder="https://...">
-            </div>
-        </div>
-
-        <div class="label-table">Otros detalles</div>
+        <div class="label-table">Otro</div>
         <div class="table">
             <div class="row">
                 <textarea id="hDescription" class="field" rows="6" placeholder="Descripción" style="width:100%; resize: none;"></textarea>
+            </div>
+            <div class="row">
+                <input type="url" id="hLink" class="field" placeholder="Link">
             </div>
         </div>
 
@@ -176,7 +177,6 @@
         <div class="table" style="padding: 18px;">
             <div id="vIcon"></div>
             <div class="habito" id="vName"></div>
-            <div id="vDescription" style="font-size: 0.85rem; color: #666; margin: 4px 0 8px;"></div>
             <div id="vUnitLabel"></div>
 
             <div class="qtyControls" id="viewQtyControls">
@@ -184,21 +184,33 @@
                 <input type="number" id="vQtyManual" class="manualQtyInput" value="0" step="any">
                 <button class="plusminus" onclick="updateQty(1)">􀅼</button>
             </div>
-            <div id="viewTimerButton" style="margin-top: 12px; display: none;">
+            <div id="viewTimerButton" style="margin: 20px 20px 0; display: none;">
                 <button class="btn btn-blue" onclick="openTimerSheet()">Temporizador</button>
             </div>
-            <div id="vLinkRow" class="row" style="margin-top: 12px; display: none;">
-                <span class="row-icon">􀌨</span>
-                <a id="vLinkValue" href="#" target="_blank" style="color: var(--primary);">Enlace</a>
+        </div>
+        <div class="table">
+            <div class="row">
+                <div class="field" id="vDescription"></div>
             </div>
-            <div id="vFolderRow" class="row" style="margin-top: 12px; display: none;">
-                <span class="row-icon">􀓔</span>
-                <span id="vFolderValue"></span>
+            <div id="vFolderRow" class="row">
+                <div class="flex">
+                    <span class="row-icon">􀈕</span>
+                    <span>Carpeta</span>
+                </div>
+                <div class="flex">
+                    <span id="vFolderValue" class="row-value"></span>
+                    <span class="chevron">􀆊</span>
+                </div>
+            </div>
+            <div id="vLinkRow" class="row" style="display: none;">
+                <div class="flex">
+                    <span class="row-icon">􀉣</span>
+                    <a id="vLinkValue" href="#" target="_blank" style="color: var(--primary); text-decoration: none;">Enlace</a>
+                </div>
             </div>
         </div>
-        
-        <div class="table" style="margin-top: 8px; cursor: pointer;" onclick="openStreak()">
-            <div class="row">
+        <div class="table" onclick="openHistorySheet()">
+            <div class="row" onclick="openStreak()">
                 <div class="flex">
                     <span class="row-icon" style="color: #ff9100;">􀙭</span>
                     <span>Racha</span>
@@ -208,9 +220,6 @@
                     <span class="chevron">􀆊</span>
                 </div>
             </div>
-        </div>
-
-        <div class="table" style="margin-top: 8px; cursor: pointer;" onclick="openHistorySheet()">
             <div class="row">
                 <div class="flex">
                     <span class="row-icon">􀻤</span>
@@ -222,7 +231,6 @@
                 </div>
             </div>
         </div>
-
         <div class="down">
             <div class="btones" id="viewBottomButtons">
                 <button class="btn btn-gray" onclick="clearQty()">Vaciar</button>
@@ -288,7 +296,7 @@
             <div class="table">
                 <div class="row"><span>Fecha</span><input type="date" id="addQtyDate" class="select"></div>
                 <div class="row"><span>Hora</span><input type="time" id="addQtyTime" class="select" step="1"></div>
-                <div class="row"><span>Notas</span><textarea id="addQtyNotes" rows="2" style="flex:1; background:transparent; border:none;"></textarea></div>
+                <div class="row"><textarea id="addQtyNotes" rows="4" class="field"  placeholder="Descripción" style="resize: none;"></textarea></div>
             </div>
         </div>
         <div id="addQtyInterval" style="display: none;">
@@ -297,8 +305,9 @@
                 <div class="row"><span>Inicio hora</span><input type="time" id="intervalStart" step="1" class="select"></div>
                 <div class="row"><span>Fin fecha</span><input type="date" id="intervalEndDate" class="select"></div>
                 <div class="row"><span>Fin hora</span><input type="time" id="intervalEnd" step="1" class="select"></div>
-                <div class="row"><span>Notas</span><textarea id="addQtyNotesInterval" rows="2" style="flex:1; background:transparent; border:none;"></textarea></div>
-            </div>
+                <div class="row">
+                    <textarea id="addQtyNotesInterval" class="field" rows="4" placeholder="Descripción" style="resize: none;"></textarea></div>
+                </div>
             <div id="timerLogPreview" style="text-align:center; padding:12px; color:var(--primary);"></div>
         </div>
     </div>
@@ -359,7 +368,7 @@
             <div class="searchBar">
                 <div class="search">􀊫</div>
                 <div class="field-with-clear" style="flex:1">
-                    <input type="text" id="iconSearchFolder" placeholder="Buscar íconos" autocomplete="off" style="flex:1">
+                    <input type="text" id="iconSearchFolder" placeholder="Buscar íconos" style="flex:1">
                     <button type="button" class="clear-field" id="clearIconSearchBtnFolder">􀁡</button>
                 </div>
             </div>
@@ -402,13 +411,13 @@
         </div>
     </div>
     <div class="form">
-        <div class="label-table">Estadísticas</div>
-        <div class="table">
-            <div class="row">
-                <span class="flex"><span class="row-icon">􀙭</span>Racha más larga</span>
-                <span id="longestStreakDisplay" class="row-value">0 días</span>
-            </div>
-        </div>
+        <div class="label-table">notificaciones</div>
+<div class="table">
+    <div class="row" style="cursor:pointer;" onclick="toggleNotifications()">
+        <div class="flex"><div class="row-icon">􀋦</div><span>Recordatorios</span></div>
+        <div class="toggleSwitch" id="notificationsToggle"><div class="toggleKnob"></div></div>
+    </div>
+</div>
         <div class="label-table">Datos</div>
         <div class="table">
             <div class="row" style="cursor:pointer;" onclick="openHabitsManagement()">
@@ -441,13 +450,16 @@
                 <span class="flex"><span class="row-icon">􁐏</span>Color de acento</span>
                 <select id="accentPresetSelect" class="select" style="max-width: 50%;">
                     <option value="default">Predeterminado</option>
-                    <option value="yellow">Amarillo</option><option value="cyan">Cian</option>
-                    <option value="orange">Naranja</option><option value="pink">Rosa</option>
+                    <option value="yellow">Amarillo</option>
+                    <option value="cyan">Cian</option>
+                    <option value="orange">Naranja</option>
                     <option value="brown">Café</option>
                     <optgroup label="Temas suaves">
-                        <option value="p1">Cloud</option><option value="p3">Ocean</option>
-                        <option value="p4">Gold pink</option><option value="p5">Lavender</option>
-                        <option value="p6">Green Tea</option><option value="p7">Brick</option>
+                        <option value="p3">Ocean</option>
+                        <option value="p4">Gold pink</option>
+                        <option value="p5">Lavender</option>
+                        <option value="p6">Green Tea</option>
+                        <option value="p7">Brick</option>
                         <option value="p8">Apple</option>
                     </optgroup>
                     <option value="custom">Personalizado</option>
@@ -588,7 +600,16 @@
             <button class="btn-action" onclick="openFolderEditSheet(null)">Agregar</button>
         </div>
     </div>
-    <div class="form"><div id="foldersList" class="table"></div></div>
+    <div class="form">
+        <div class="table">
+            <div class="row" style="cursor:pointer;" onclick="toggleFolderShowIcons()">
+                <span>Mostrar iconos</span>
+                <div class="toggleSwitch" id="folderShowIconsToggle"><div class="toggleKnob"></div></div>
+            </div>
+        </div>
+        <div class="label-table">carpetas</div>
+        <div id="foldersList" class="table"></div>
+    </div>
 </div>
 
 <!-- SHEET EDITAR CARPETA -->
@@ -605,17 +626,13 @@
             <div class="row">
                 <span class="label">Icono</span>
                 <div class="flex">
-                    <div class="select" id="folderIconTrigger" style="width:24px; height:24px; font-size:1..2rem;">􀓔</div>
+                    <div class="select" id="folderIconTrigger" style="width:24px; height:24px; font-size:1..2rem;">􀈕</div>
                     <div class="chevron">􀆊</div>
                 </div>
             </div>
             <div class="row">
                 <span class="label">Carpeta</span>
                 <input type="text" id="folderName" placeholder="Nombre" class="select">
-            </div>
-            <div class="row" style="cursor:pointer;" onclick="toggleFolderShowIcons()">
-                <span>Mostrar iconos</span>
-                <div class="toggleSwitch" id="folderShowIconsToggle"><div class="toggleKnob"></div></div>
             </div>
         </div>
         <div id="deleteFolderRow" class="table" style="margin-top: 16px; display: none;">

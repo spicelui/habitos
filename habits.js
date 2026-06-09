@@ -27,9 +27,9 @@ let currentTimerLog = null;
 
 // --- CONFIGURACIONES DE UI ---
 let uiSettings = {
-    fontFeatures: true,
-    cardRadius: 26,
-    time24h: true,
+    fontFeatures: false,
+    cardRadius: 28,
+    time24h: false,
     showIcons: true,
     showScheduledFirst: false,
     showUnitLabel: true,
@@ -40,16 +40,31 @@ let uiSettings = {
     showProgressBar: true,
     fontFamily: 'Predeterminado',
     grouping: 'folder',
-    showOverdue: true
+    showOverdue: false
 };
 
-// Folders default
-if (folders.length === 0) {
-    folders = [{ id: genId(), name: 'General', icon: '􀓔', showIcons: true, iconColor: '#0076fa' }];
-    localStorage.setItem('folders', JSON.stringify(folders));
-}
+let showFolderIconsGlobal = true;
 
-// --- CONTROL DE SCROLL DENTRO DE UNA SHEET (HEADERB) ---
+// Folder por defecto
+const DEFAULT_FOLDER_ID = 'default';
+const DEFAULT_FOLDER = {
+    id: DEFAULT_FOLDER_ID,
+    name: 'Todos los hábitos',
+    icon: '􀈕',
+    iconColor: '#007afc'
+};
+
+// Asegurar que la carpeta por defecto existe en folders
+function ensureDefaultFolder() {
+    const defaultExists = folders.some(f => f.id === DEFAULT_FOLDER_ID);
+    if (!defaultExists) {
+        folders.unshift(DEFAULT_FOLDER);
+        localStorage.setItem('folders', JSON.stringify(folders));
+    }
+}
+ensureDefaultFolder();
+
+// --- CONTROL DE SCROLL ---
 let currentSheetScrollHandler = null;
 
 function setupSheetScrollListener(sheetElement) {
@@ -78,7 +93,6 @@ function removeSheetScrollListener(sheetElement) {
     }
 }
 
-// --- CONTROL DE SCROLL DEL TOPBAR PRINCIPAL ---
 function handleTopbarOnScroll() {
     const topbar = document.querySelector('.topbar');
     if (!topbar) return;
@@ -159,10 +173,10 @@ function migrateHabits() {
         if (h.isInterval === undefined) h.isInterval = false;
         if (h.intervalUnit === undefined && h.isInterval) h.intervalUnit = 'minutes';
         if (!h.history) h.history = {};
-        if (!h.type) h.type = 'build';
+        if (h.type) delete h.type;
         if (!h.timeCondition) h.timeCondition = 'at';
         if (!h.link) h.link = '';
-        if (!h.folderId) h.folderId = folders[0]?.id || '';
+        if (!h.folderId) h.folderId = DEFAULT_FOLDER_ID;
     }
     if (modified) localStorage.setItem('units', JSON.stringify(units));
     localStorage.setItem('habits', JSON.stringify(habits));
@@ -226,10 +240,8 @@ function initAccentPicker() {
             switch(val) {
                 case 'orange': light = '#ff9500'; dark = '#e58800'; break;
                 case 'yellow': light = '#e9ab00'; dark = '#e6b736'; break;
-                case 'pink': light = '#ff2d55'; dark = '#e6244a'; break;
                 case 'brown': light = '#a37965'; dark = '#b18b72'; break;
-                case 'cyan': light = '#109db6'; dark = '#e6244a'; break;
-                case 'p1': light = '#7290b1'; dark = '#98b8d0'; break;
+                case 'cyan': light = '#109db6'; dark = '#109db6'; break;
                 case 'p3': light = '#375e8a'; dark = '#619be8'; break;
                 case 'p4': light = '#c48495'; dark = '#d4a4b1'; break;
                 case 'p5': light = '#8872b2'; dark = '#908ec8'; break;
@@ -281,15 +293,24 @@ function getUnitById(unitId) {
 function formatQuantity(amount) {
     return amount % 1 === 0 ? amount.toString() : amount.toFixed(1);
 }
+function formatDuration(seconds) {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) {
+        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    } else {
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+}
 
-// --- OVERLAY ---
+// --- OVERLAY Y SHEETS ---
 function updateOverlay() {
     const overlay = document.getElementById('overlay');
     if (activeSheet) overlay.classList.add('active');
     else overlay.classList.remove('active');
 }
 
-// --- SHEETS CON OVERLAY ---
 function openSheet(id) {
     if (activeSheet === id) return;
     ignoreNextClick = true;
@@ -311,7 +332,14 @@ function openSheet(id) {
     requestAnimationFrame(() => {
         content.classList.add('active');
         setupSheetScrollListener(content);
+        if (id === 'iconPickerSheetFolder' && typeof initIconsFolder === 'function') {
+            // Limpiar búsqueda y mostrar todos los íconos
+            const searchInput = document.getElementById('iconSearchFolder');
+            if (searchInput) searchInput.value = '';
+            initIconsFolder('');
+        }
     });
+    
     updateOverlay();
 }
 
@@ -343,7 +371,7 @@ document.addEventListener('click', (e) => {
 });
 document.addEventListener('click', () => { ignoreNextClick = false; }, true);
 
-// --- TOGGLE HORA ---
+// --- TOGGLES ---
 function toggleHourEnabled() {
     hourEnabled = !hourEnabled;
     const toggle = document.getElementById('hourToggle');
@@ -362,6 +390,7 @@ function toggleHourEnabled() {
         timeInput.value = '';
     }
 }
+
 function setHourToggleState(enabled, timeValue, condition = 'at') {
     hourEnabled = enabled;
     const toggle = document.getElementById('hourToggle');
@@ -383,7 +412,6 @@ function setHourToggleState(enabled, timeValue, condition = 'at') {
     }
 }
 
-// --- TOGGLE INTERVALOS EN FORMULARIO ---
 function toggleIntervalForm() {
     intervalEnabled = !intervalEnabled;
     const toggle = document.getElementById('intervalToggle');
@@ -403,6 +431,7 @@ function toggleIntervalForm() {
         intervalUnitRow.style.display = 'none';
     }
 }
+
 function setIntervalFormState(enabled, savedIntervalUnit) {
     intervalEnabled = enabled;
     const toggle = document.getElementById('intervalToggle');
@@ -423,7 +452,7 @@ function setIntervalFormState(enabled, savedIntervalUnit) {
     }
 }
 
-// --- ICONOS (global) ---
+// --- ICONOS ---
 let selectedIcon = '􀓔';
 let selectedColor = '#0076ff';
 const colorPicker = document.getElementById('iconColorPicker');
@@ -437,6 +466,7 @@ if (colorPicker) {
         initIcons();
     });
 }
+
 function initIcons(filter = "") {
     const grid = document.getElementById('iconGrid');
     if (!grid || typeof iconData === 'undefined') return;
@@ -470,7 +500,7 @@ function initIcons(filter = "") {
     }
 }
 
-// --- FUNCIONES DE UI SETTINGS ---
+// --- UI SETTINGS ---
 function loadUISettings() {
     const saved = localStorage.getItem('uiSettings');
     if (saved) {
@@ -631,20 +661,10 @@ function applyProgressBarToggle() {
 function applyFontFamily() {
     let font = '';
     switch (uiSettings.fontFamily) {
-        case 'Predeterminado':
-            font = '';
-            break;
-        case 'Helvetica':
-            font = 'Helvetica, sans-serif';
-            break;
-        case 'Roboto':
-            font = 'Roboto, sans-serif';
-            break;
-        case 'Inter':
-            font = 'Inter, -apple-system, "sf", sans-serif';
-            break;
-        default:
-            font = '';
+        case 'Helvetica': font = 'Helvetica, sans-serif'; break;
+        case 'Roboto': font = 'Roboto, sans-serif'; break;
+        case 'Inter': font = 'Inter, -apple-system, "sf", sans-serif'; break;
+        default: font = '';
     }
     document.body.style.fontFamily = font;
 }
@@ -662,130 +682,39 @@ function applyOverdueToggle() {
     renderHabits();
 }
 
-function toggleFontFeatures() {
-    uiSettings.fontFeatures = !uiSettings.fontFeatures;
-    saveUISettings();
-    applyFontFeatures();
-}
-
-function toggleShowIcons() {
-    uiSettings.showIcons = !uiSettings.showIcons;
-    saveUISettings();
-    applyShowIconsToggleUI();
-    renderHabits();
-}
-
-function toggleTimeFormat() {
-    uiSettings.time24h = !uiSettings.time24h;
-    saveUISettings();
-    applyTimeFormatToggleUI();
-    renderHabits();
-    if (activeSheet === 'viewSheet' && currentHabitId) {
-        openViewById(currentHabitId);
-    }
-    if (activeSheet === 'historySheet') openHistorySheet();
-}
-
-function toggleScheduledFirst() {
-    uiSettings.showScheduledFirst = !uiSettings.showScheduledFirst;
-    saveUISettings();
-    applyScheduledFirstToggle();
-    renderHabits();
-}
-
-function toggleUnitLabel() {
-    uiSettings.showUnitLabel = !uiSettings.showUnitLabel;
-    saveUISettings();
-    applyUnitLabelToggle();
-    renderHabits();
-}
-
-function toggleTimeOnCard() {
-    uiSettings.showTimeOnCard = !uiSettings.showTimeOnCard;
-    saveUISettings();
-    applyTimeOnCardToggle();
-    renderHabits();
-}
-
-function toggleButtonOnCard() {
-    uiSettings.showButtonOnCard = !uiSettings.showButtonOnCard;
-    saveUISettings();
-    applyButtonOnCardToggle();
-    renderHabits();
-}
-
-function toggleDarkLighter() {
-    uiSettings.darkLighter = !uiSettings.darkLighter;
-    saveUISettings();
-    applyDarkLighter();
-}
-
-function toggleAccentWhiteText() {
-    uiSettings.accentWhiteText = !uiSettings.accentWhiteText;
-    saveUISettings();
-    applyAccentWhiteText();
-}
-
-function toggleProgressBar() {
-    uiSettings.showProgressBar = !uiSettings.showProgressBar;
-    saveUISettings();
-    applyProgressBarToggle();
-    renderHabits();
-}
-
-function toggleOverdue() {
-    uiSettings.showOverdue = !uiSettings.showOverdue;
-    saveUISettings();
-    applyOverdueToggle();
-    renderHabits();
-}
+// --- TOGGLE FUNCTIONS ---
+function toggleFontFeatures() { uiSettings.fontFeatures = !uiSettings.fontFeatures; saveUISettings(); applyFontFeatures(); }
+function toggleShowIcons() { uiSettings.showIcons = !uiSettings.showIcons; saveUISettings(); applyShowIconsToggleUI(); renderHabits(); }
+function toggleTimeFormat() { uiSettings.time24h = !uiSettings.time24h; saveUISettings(); applyTimeFormatToggleUI(); renderHabits(); if (activeSheet === 'viewSheet' && currentHabitId) openViewById(currentHabitId); if (activeSheet === 'historySheet') openHistorySheet(); }
+function toggleScheduledFirst() { uiSettings.showScheduledFirst = !uiSettings.showScheduledFirst; saveUISettings(); applyScheduledFirstToggle(); renderHabits(); }
+function toggleUnitLabel() { uiSettings.showUnitLabel = !uiSettings.showUnitLabel; saveUISettings(); applyUnitLabelToggle(); renderHabits(); }
+function toggleTimeOnCard() { uiSettings.showTimeOnCard = !uiSettings.showTimeOnCard; saveUISettings(); applyTimeOnCardToggle(); renderHabits(); }
+function toggleButtonOnCard() { uiSettings.showButtonOnCard = !uiSettings.showButtonOnCard; saveUISettings(); applyButtonOnCardToggle(); renderHabits(); }
+function toggleDarkLighter() { uiSettings.darkLighter = !uiSettings.darkLighter; saveUISettings(); applyDarkLighter(); }
+function toggleAccentWhiteText() { uiSettings.accentWhiteText = !uiSettings.accentWhiteText; saveUISettings(); applyAccentWhiteText(); }
+function toggleProgressBar() { uiSettings.showProgressBar = !uiSettings.showProgressBar; saveUISettings(); applyProgressBarToggle(); renderHabits(); }
+function toggleOverdue() { uiSettings.showOverdue = !uiSettings.showOverdue; saveUISettings(); applyOverdueToggle(); renderHabits(); }
 
 function resetOnlySettings() {
     if (confirm('Restablecer solo la configuración de apariencia y organización? (No se perderán hábitos ni unidades)')) {
         uiSettings = {
-            fontFeatures: true,
-            cardRadius: 26,
-            time24h: true,
-            showIcons: true,
-            showScheduledFirst: false,
-            showUnitLabel: true,
-            showTimeOnCard: true,
-            showButtonOnCard: true,
-            darkLighter: false,
-            accentWhiteText: false,
-            showProgressBar: true,
-            fontFamily: 'Predeterminado',
-            grouping: 'folder',
-            showOverdue: true
+            fontFeatures: true, cardRadius: 26, time24h: true, showIcons: true, showScheduledFirst: false,
+            showUnitLabel: true, showTimeOnCard: true, showButtonOnCard: true, darkLighter: false,
+            accentWhiteText: false, showProgressBar: true, fontFamily: 'Predeterminado', grouping: 'folder', showOverdue: true
         };
         saveUISettings();
-        applyFontFeatures();
-        applyCardRadius();
-        applyShowIconsToggleUI();
-        applyTimeFormatToggleUI();
-        applyScheduledFirstToggle();
-        applyUnitLabelToggle();
-        applyTimeOnCardToggle();
-        applyButtonOnCardToggle();
-        applyDarkLighter();
-        applyAccentWhiteText();
-        applyProgressBarToggle();
-        applyFontFamily();
-        applyGrouping();
-        applyOverdueToggle();
-        const radiusInput = document.getElementById('cardRadiusInput');
-        if (radiusInput) radiusInput.value = 26;
-        const fontSelect = document.getElementById('fontSelect');
-        if (fontSelect) fontSelect.value = 'Predeterminado';
-        const groupingSelect = document.getElementById('groupingSelect');
-        if (groupingSelect) groupingSelect.value = 'folder';
+        applyFontFeatures(); applyCardRadius(); applyShowIconsToggleUI(); applyTimeFormatToggleUI();
+        applyScheduledFirstToggle(); applyUnitLabelToggle(); applyTimeOnCardToggle(); applyButtonOnCardToggle();
+        applyDarkLighter(); applyAccentWhiteText(); applyProgressBarToggle(); applyFontFamily(); applyGrouping(); applyOverdueToggle();
+        const radiusInput = document.getElementById('cardRadiusInput'); if (radiusInput) radiusInput.value = 26;
+        const fontSelect = document.getElementById('fontSelect'); if (fontSelect) fontSelect.value = 'Predeterminado';
+        const groupingSelect = document.getElementById('groupingSelect'); if (groupingSelect) groupingSelect.value = 'folder';
         renderHabits();
         if (activeSheet === 'viewSheet' && currentHabitId) openViewById(currentHabitId);
         if (activeSheet === 'historySheet') openHistorySheet();
     }
 }
 
-// --- Formateo de hora según preferencia ---
 function formatTimeByPreference(time24) {
     if (!time24) return '';
     if (uiSettings.time24h) return time24;
@@ -797,43 +726,28 @@ function formatTimeByPreference(time24) {
     return `${h12}:${minutes} ${ampm}`;
 }
 
-// Check if habit is overdue (time in red)
 function isHabitOverdue(habit) {
-    if (!uiSettings.showOverdue) return false;
-    if (!habit.time) return false;
-    if (habit.timeCondition !== 'before') return false;
-    const todayStr = selectedDate;
-    const completed = isHabitCompleted(habit, habit.history[todayStr] || 0);
-    if (completed) return false;
+    if (!uiSettings.showOverdue || !habit.time || habit.timeCondition !== 'before') return false;
+    const qty = habit.history[selectedDate] || 0;
+    if (qty >= habit.goal) return false;
     const now = new Date();
-    const habitTime = new Date();
     const [h, m] = habit.time.split(':');
-    habitTime.setHours(parseInt(h), parseInt(m), 0);
+    const habitTime = new Date(); habitTime.setHours(parseInt(h), parseInt(m), 0);
     return now > habitTime;
 }
 
-// Check if habit is completed (considering type)
 function isHabitCompleted(habit, qty) {
-    if (habit.type === 'quit') {
-        return qty <= habit.goal;
-    } else {
-        return qty >= habit.goal;
-    }
+    return qty >= habit.goal;
 }
 
-// --- RENDER HÁBITOS (con búsqueda, agrupación por carpeta o sin agrupación) ---
+// --- RENDER HÁBITOS ---
 let searchQuery = '';
 
 function getHabitCardHTML(h) {
     const qty = h.history[selectedDate] || 0;
     const isComplete = isHabitCompleted(h, qty);
     const overdue = isHabitOverdue(h);
-    let progress;
-    if (h.type === 'quit') {
-        progress = Math.min(100, ((h.goal - qty) / h.goal) * 100);
-    } else {
-        progress = Math.min(100, (qty / h.goal) * 100);
-    }
+    let progress = Math.min(100, (qty / h.goal) * 100);
     const unit = h.isInterval ? (h.intervalUnit === 'hours' ? 'horas' : 'minutos') : getUnitById(h.unitId).plural;
     let buttonAction, buttonLabel, buttonStyle;
     if (h.isInterval) {
@@ -848,7 +762,6 @@ function getHabitCardHTML(h) {
     const qtyDisplay = formatQuantity(qty);
     const goalDisplay = formatQuantity(h.goal);
     let displayTime = (uiSettings.showTimeOnCard && h.time) ? formatTimeByPreference(h.time) : '';
-    // Aplicar clase overdue-time si corresponde
     const timeClass = overdue ? 'overdue-time' : '';
     const iconHtml = uiSettings.showIcons ? `<div class="habitIconCircle" style="color: ${h.iconColor}">${h.icon}</div>` : '';
     const progressBarHtml = uiSettings.showProgressBar && h.goal > 1 ? `<div class="progress"><div class="habitProgressBar"><div class="habitProgressBarInner" data-w="${progress}%" style="width: ${progress}%; background: ${h.iconColor};"></div></div></div>` : '';
@@ -856,11 +769,7 @@ function getHabitCardHTML(h) {
     
     let progressBadgeHtml = '';
     if (uiSettings.showUnitLabel && h.goal > 1 && qty > 0 && qty !== h.goal) {
-        if (h.type === 'quit') {
-            progressBadgeHtml = `<div class="habitProgressBadge" style="color: ${h.iconColor}"><div class="cantidad"><div class="hecho">${qtyDisplay} ${unit}</div><div class="meta">${goalDisplay} ${unit}</div></div></div>`;
-        } else {
-            progressBadgeHtml = `<div class="habitProgressBadge" style="color: ${h.iconColor}"><div class="cantidad"><div class="hecho">${qtyDisplay} ${unit}</div><div class="meta">${goalDisplay} ${unit}</div></div></div>`;
-        }
+        progressBadgeHtml = `<div class="habitProgressBadge" style="color: ${h.iconColor}"><div class="cantidad"><div class="hecho">${qtyDisplay} ${unit}</div><div class="meta">${goalDisplay} ${unit}</div></div></div>`;
     }
     
     return `<div class="habitCard ${isComplete ? 'completed' : ''}" data-id="${h.id}" onclick="openViewById('${h.id}')">
@@ -895,49 +804,68 @@ function renderHabits(updatedId = null, animate = false, wasComplete = null, isC
         return true;
     });
     
-    // Ordenación
     const sorted = [...activeHabits].sort((a, b) => {
         const ca = isHabitCompleted(a, a.history[selectedDate] || 0);
         const cb = isHabitCompleted(b, b.history[selectedDate] || 0);
         if (ca !== cb) return ca ? 1 : -1;
-        
         if (uiSettings.showScheduledFirst) {
-            const ta = a.time || "99:99";
-            const tb = b.time || "99:99";
-            return ta.localeCompare(tb);
+            return (a.time || "99:99").localeCompare(b.time || "99:99");
         } else {
-            const aHasTime = !!a.time;
-            const bHasTime = !!b.time;
+            const aHasTime = !!a.time, bHasTime = !!b.time;
             if (aHasTime !== bHasTime) return aHasTime ? 1 : -1;
             return (a.time || "99:99").localeCompare(b.time || "99:99");
         }
     });
 
+    function getTimeSlot(habit) {
+        if (!habit.time) return 'sinhora';
+        const hour = parseInt(habit.time.split(':')[0]);
+        if (hour < 12) return 'manana';
+        if (hour < 18) return 'tarde';
+        return 'noche';
+    }
+    const slotNames = { manana: 'Mañana', tarde: 'Tarde', noche: 'Noche', sinhora: 'En cualquier momento' };
+
     if (uiSettings.grouping === 'folder') {
-        const foldersWithHabits = {};
+        const foldersMap = new Map();
         for (let folder of folders) {
-            foldersWithHabits[folder.id] = { folder, habits: [] };
+            foldersMap.set(folder.id, { folder, habits: [] });
         }
-        foldersWithHabits['none'] = { folder: { id: 'none', name: 'Sin carpeta', icon: '􀓔', iconColor: '#8e8e93' }, habits: [] };
+        
         for (let h of sorted) {
-            const fid = h.folderId || 'none';
-            if (foldersWithHabits[fid]) foldersWithHabits[fid].habits.push(h);
-            else foldersWithHabits['none'].habits.push(h);
+            const fid = h.folderId || DEFAULT_FOLDER_ID;
+            if (foldersMap.has(fid)) {
+                foldersMap.get(fid).habits.push(h);
+            } else {
+                foldersMap.get(DEFAULT_FOLDER_ID).habits.push(h);
+            }
         }
+        
         let html = '';
-        for (let group of Object.values(foldersWithHabits)) {
+        for (let [_, group] of foldersMap) {
             if (group.habits.length) {
                 const folder = group.folder;
-                const iconHtml = (uiSettings.showIcons && folder.showIcons !== false) ? `<span></span>` : '';
-                html += `<div class="folder-group"><div class="folder-header" style="display:flex;">${iconHtml}<span style="font-weight:600;">${folder.icon} ${folder.name}</span></div>`;
-                html += `<div style="display:flex; gap:12px;">${group.habits.map(h => getHabitCardHTML(h)).join('')}</div>`;
+                const showFolderIcon = showFolderIconsGlobal;
+                html += `<div class="folder-group"><div class="folder-header">${showFolderIcon ? `<span style="font-size: 1.1rem; font-weight: 450; color:${folder.iconColor}">${folder.icon}</span>` : ''}<span>${folder.name}</span></div>`;
+                html += `<div class="cards">${group.habits.map(h => getHabitCardHTML(h)).join('')}</div>`;
                 html += `</div>`;
             }
         }
-        container.innerHTML = html || `<div style="color:#8e8e93; margin-top:40px;">No hay hábitos para hoy</div>`;
+        container.innerHTML = html || `<div class="message">No hay hábitos para hoy.</div>`;
+    } else if (uiSettings.grouping === 'time') {
+        const groups = { manana: [], tarde: [], noche: [], sinhora: [] };
+        for (let h of sorted) groups[getTimeSlot(h)].push(h);
+        let html = '';
+        for (let [slot, habitsList] of Object.entries(groups)) {
+            if (habitsList.length) {
+                html += `<div class="folder-group"><span class="folder-header">${slotNames[slot]}</span>`;
+                html += `<div class="cards">${habitsList.map(h => getHabitCardHTML(h)).join('')}</div>`;
+                html += `</div>`;
+            }
+        }
+        container.innerHTML = html || `<div class="message">No hay hábitos para hoy.</div>`;
     } else {
-        // Sin agrupación
-        container.innerHTML = sorted.length ? sorted.map(h => getHabitCardHTML(h)).join('') : `<div style="text-align:center; color:#8e8e93; margin-top:40px;">No hay hábitos para hoy</div>`;
+        container.innerHTML = sorted.length ? sorted.map(h => getHabitCardHTML(h)).join('') : `<div class="message">No hay hábitos para hoy.</div>`;
     }
 
     if (animate && updatedId && oldRect) {
@@ -979,7 +907,7 @@ function searchHabits() {
     renderHabits();
 }
 
-// --- LOGS (with notes, custom date/time) ---
+// --- LOGS ---
 function addLog(habitId, amount, dateStr, timeStr, extra = null, notes = '') {
     const habit = habits.find(h => h.id === habitId);
     if (!habit || amount <= 0) return;
@@ -995,15 +923,29 @@ function addLog(habitId, amount, dateStr, timeStr, extra = null, notes = '') {
     habit.logs.push(logEntry);
     localStorage.setItem('habits', JSON.stringify(habits));
 }
+
 function deleteLog(habitId, logIndex) {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return;
+    const log = habit.logs[logIndex];
+    if (!log) return;
     habit.logs.splice(logIndex, 1);
+    
+    const date = log.date;
+    const logsForDate = habit.logs.filter(l => l.date === date);
+    const total = logsForDate.reduce((sum, l) => sum + l.amount, 0);
+    if (total === 0) {
+        delete habit.history[date];
+    } else {
+        habit.history[date] = total;
+    }
+    
     localStorage.setItem('habits', JSON.stringify(habits));
     if (activeSheet === 'logViewSheet') closeSheet('logViewSheet');
     if (activeSheet === 'historySheet') openHistorySheet();
     renderHabits();
 }
+
 function openLogView(log, index, habitId) {
     currentLogEntry = { log, index, habitId };
     const habit = habits.find(h => h.id === habitId);
@@ -1023,6 +965,7 @@ function openLogView(log, index, habitId) {
     }
     openSheet('logViewSheet');
 }
+
 function deleteCurrentLog() {
     if (currentLogEntry && confirm('¿Eliminar este registro?')) {
         deleteLog(currentLogEntry.habitId, currentLogEntry.index);
@@ -1055,27 +998,25 @@ function openHistorySheet() {
     });
     openSheet('historySheet');
 }
-function formatDuration(seconds) {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    if (hrs > 0) {
-        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    } else {
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-}
 
 // --- CRUD ---
 function openViewById(id) {
     const habit = habits.find(h => h.id === id);
     if (habit) openView(habit);
 }
+
 function openView(habit) {
     currentHabitId = habit.id;
     const unit = habit.isInterval ? (habit.intervalUnit === 'hours' ? 'horas' : 'minutos') : getUnitById(habit.unitId).plural;
     document.getElementById('vName').textContent = habit.name;
-    document.getElementById('vDescription').textContent = habit.description || '';
+
+    const descRow = document.getElementById('vDescription').closest('.row');
+    if (habit.description && habit.description.trim() !== '') {
+        document.getElementById('vDescription').textContent = habit.description;
+        descRow.style.display = 'flex';
+    } else {
+        descRow.style.display = 'none';
+    }
     document.getElementById('vIcon').textContent = habit.icon;
     document.getElementById('vIcon').style.color = habit.iconColor;
     document.getElementById('vQtyManual').value = habit.history[selectedDate] || 0;
@@ -1098,18 +1039,15 @@ function openView(habit) {
     if (habit.isInterval) {
         qtyControls.style.display = 'none';
         timerBtn.style.display = 'block';
-        if (bottomBtns) {
-            const completeBtn = bottomBtns.querySelector('.btn-blue');
-            if (completeBtn) completeBtn.style.display = 'block';
-        }
     } else {
         qtyControls.style.display = 'flex';
         timerBtn.style.display = 'none';
-        if (bottomBtns) {
-            const completeBtn = bottomBtns.querySelector('.btn-blue');
-            if (completeBtn) completeBtn.style.display = 'block';
-        }
     }
+    if (bottomBtns) {
+        const completeBtn = bottomBtns.querySelector('.btn-blue');
+        if (completeBtn) completeBtn.style.display = 'block';
+    }
+    
     let existingTimeElem = document.getElementById('vTimeDisplay');
     if (!existingTimeElem && habit.time) {
         const descDiv = document.getElementById('vDescription');
@@ -1118,7 +1056,7 @@ function openView(habit) {
         timeDiv.style.fontSize = '0.85rem';
         timeDiv.style.color = '#666';
         timeDiv.style.margin = '4px 0 8px';
-        descDiv.parentNode.insertBefore(timeDiv, descDiv.nextSibling);
+        if (descDiv && descDiv.parentNode) descDiv.parentNode.insertBefore(timeDiv, descDiv.nextSibling);
         existingTimeElem = timeDiv;
     }
     if (habit.time && existingTimeElem) {
@@ -1137,19 +1075,12 @@ function openView(habit) {
     }
     const folderRow = document.getElementById('vFolderRow');
     const folderValue = document.getElementById('vFolderValue');
-    if (habit.folderId) {
-        const folder = folders.find(f => f.id === habit.folderId);
-        if (folder) {
-            folderRow.style.display = 'flex';
-            folderValue.innerHTML = `${uiSettings.showIcons && folder.showIcons !== false ? folder.icon + ' ' : ''}${folder.name}`;
-        } else {
-            folderRow.style.display = 'none';
-        }
-    } else {
-        folderRow.style.display = 'none';
-    }
+    const folder = folders.find(f => f.id === habit.folderId) || DEFAULT_FOLDER;
+    folderRow.style.display = 'flex';
+    folderValue.textContent = folder.name;
     openSheet('viewSheet');
 }
+
 function saveHabit() {
     const name = document.getElementById('hName').value.trim();
     const goal = parseFloat(document.getElementById('hGoal').value) || 1;
@@ -1169,7 +1100,6 @@ function saveHabit() {
         unitId = document.getElementById('hUnitSelect').value;
         intervalUnit = null;
     }
-    const type = document.getElementById('hTypeSelect').value;
     const timeCondition = document.getElementById('hTimeCondition') ? document.getElementById('hTimeCondition').value : 'at';
     const link = document.getElementById('hLink').value.trim();
     const folderId = document.getElementById('hFolderSelect').value;
@@ -1178,7 +1108,7 @@ function saveHabit() {
         time: hourEnabled ? document.getElementById('hTime').value : null,
         icon: selectedIcon, iconColor: selectedColor, history, logs,
         dias: [...diasSeleccionados], unitId, description: document.getElementById('hDescription').value,
-        isInterval, intervalUnit, type, timeCondition, link, folderId
+        isInterval, intervalUnit, timeCondition, link, folderId
     };
     if (existing) {
         const idx = habits.findIndex(h => h.id === id);
@@ -1189,6 +1119,7 @@ function saveHabit() {
     closeSheet('createSheet');
     currentHabitId = null;
 }
+
 function deleteHabit() {
     if (confirm('¿Borrar hábito?')) {
         habits = habits.filter(h => h.id !== currentHabitId);
@@ -1198,6 +1129,7 @@ function deleteHabit() {
         currentHabitId = null;
     }
 }
+
 function updateQtyById(id, dir) {
     const idx = habits.findIndex(h => h.id === id);
     if (idx === -1) return;
@@ -1207,16 +1139,26 @@ function updateQtyById(id, dir) {
         return;
     }
     const oldQty = h.history[selectedDate] || 0;
-    const increment = dir * h.step;
-    if (increment <= 0) return;
-    let newQty = oldQty + increment;
-    if (h.type === 'quit' && newQty > h.goal) newQty = h.goal;
+    let newQty = oldQty + (dir * h.step);
+    if (newQty < 0) newQty = 0;
+    if (newQty > h.goal) newQty = h.goal;
+    const increment = newQty - oldQty;
+    if (increment === 0) return;
     const wasComplete = isHabitCompleted(h, oldQty);
     const isComplete = isHabitCompleted(h, newQty);
     h.history[selectedDate] = newQty;
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
-    addLog(id, increment, selectedDate, timeStr);
+    if (increment > 0) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+        addLog(id, increment, selectedDate, timeStr);
+    } else {
+        const logsForDate = h.logs.filter(l => l.date === selectedDate).sort((a,b) => new Date(b.date + 'T' + b.time) - new Date(a.date + 'T' + a.time));
+        if (logsForDate.length > 0) {
+            const lastLog = logsForDate[0];
+            const idxLog = h.logs.findIndex(l => l === lastLog);
+            if (idxLog !== -1) h.logs.splice(idxLog, 1);
+        }
+    }
     localStorage.setItem('habits', JSON.stringify(habits));
     renderHabits(h.id, true, wasComplete, isComplete);
     if (activeSheet === 'viewSheet' && currentHabitId === h.id) {
@@ -1224,14 +1166,16 @@ function updateQtyById(id, dir) {
         document.getElementById('streakNumberInView').textContent = `${getStreak(h)} días`;
     }
 }
+
 function updateQty(dir) {
     if (currentHabitId) updateQtyById(currentHabitId, dir);
 }
+
 function clearQty() {
     if (!currentHabitId) return;
     const h = habits.find(h => h.id === currentHabitId);
     if (!h) return;
-    deleteLogsForDate(currentHabitId, selectedDate);
+    h.logs = h.logs.filter(l => l.date !== selectedDate);
     h.history[selectedDate] = 0;
     localStorage.setItem('habits', JSON.stringify(habits));
     document.getElementById('vQtyManual').value = 0;
@@ -1248,21 +1192,15 @@ function clearQty() {
     document.getElementById('historyEntryCount').innerText = monthEntries;
     closeSheet('viewSheet');
 }
+
 function setComplete() {
     if (!currentHabitId) return;
     const h = habits.find(h => h.id === currentHabitId);
     if (!h) return;
     const oldQty = h.history[selectedDate] || 0;
-    let needed;
-    if (h.type === 'quit') {
-        needed = Math.max(0, oldQty - h.goal);
-        if (needed <= 0) return;
-        h.history[selectedDate] = h.goal;
-    } else {
-        needed = h.goal - oldQty;
-        if (needed <= 0) return;
-        h.history[selectedDate] = h.goal;
-    }
+    let needed = h.goal - oldQty;
+    if (needed <= 0) return;
+    h.history[selectedDate] = h.goal;
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
     addLog(currentHabitId, needed, selectedDate, timeStr);
@@ -1271,10 +1209,12 @@ function setComplete() {
     renderHabits(h.id, true, false, true);
     document.getElementById('streakNumberInView').textContent = `${getStreak(h)} días`;
 }
+
 function openAddQuantitySheetById(habitId) {
     currentHabitId = habitId;
     openAddQuantitySheet();
 }
+
 function openAddQuantitySheet() {
     const habit = habits.find(h => h.id === currentHabitId);
     if (!habit) return;
@@ -1304,6 +1244,7 @@ function openAddQuantitySheet() {
     }
     openSheet('addQuantitySheet');
 }
+
 function updateIntervalPreview() {
     const startDate = document.getElementById('intervalStartDate').value;
     const endDate = document.getElementById('intervalEndDate').value;
@@ -1316,10 +1257,7 @@ function updateIntervalPreview() {
     const previewDiv = document.getElementById('timerLogPreview');
     if (previewDiv) previewDiv.textContent = `Duración: ${formatDuration(Math.max(0, diffSec))}`;
 }
-function timeToSeconds(time) {
-    const [h,m,s = 0] = time.split(':').map(Number);
-    return h*3600 + m*60 + s;
-}
+
 function confirmAddQuantity() {
     const habit = habits.find(h => h.id === currentHabitId);
     if (!habit) return;
@@ -1334,16 +1272,13 @@ function confirmAddQuantity() {
         let end = new Date(`${endDate}T${endTime}`);
         let durationSec = (end - start) / 1000;
         if (durationSec <= 0) return alert('La fecha/hora de fin debe ser posterior a la de inicio');
-        let amount;
-        if (habit.intervalUnit === 'hours') amount = durationSec / 3600;
-        else amount = durationSec / 60;
+        let amount = habit.intervalUnit === 'hours' ? durationSec / 3600 : durationSec / 60;
         const oldQty = habit.history[selectedDate] || 0;
-        let newQty = oldQty + amount;
-        if (habit.type === 'quit' && newQty > habit.goal) newQty = habit.goal;
+        let newQty = Math.min(oldQty + amount, habit.goal);
         habit.history[selectedDate] = newQty;
         const now = new Date();
         const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
-        addLog(currentHabitId, amount, selectedDate, timeStr, { startTime: startTime, endTime: endTime, startDate: startDate, endDate: endDate, durationSeconds: durationSec }, notes);
+        addLog(currentHabitId, amount, selectedDate, timeStr, { startTime, endTime, startDate, endDate, durationSeconds: durationSec }, notes);
         localStorage.setItem('habits', JSON.stringify(habits));
         renderHabits(habit.id, true);
         if (activeSheet === 'viewSheet') {
@@ -1358,8 +1293,7 @@ function confirmAddQuantity() {
         const customTime = document.getElementById('addQtyTime').value;
         const notes = document.getElementById('addQtyNotes').value;
         const oldQty = habit.history[customDate] || 0;
-        let newQty = oldQty + addValue;
-        if (habit.type === 'quit' && newQty > habit.goal) newQty = habit.goal;
+        let newQty = Math.min(oldQty + addValue, habit.goal);
         habit.history[customDate] = newQty;
         addLog(currentHabitId, addValue, customDate, customTime, null, notes);
         localStorage.setItem('habits', JSON.stringify(habits));
@@ -1392,10 +1326,8 @@ function getStreak(h) {
     return streak;
 }
 
-// --- RACHA MÁS LARGA GLOBAL ---
 function getLongestStreakForHabit(habit) {
-    let maxStreak = 0;
-    let currentStreak = 0;
+    let maxStreak = 0, currentStreak = 0;
     let dates = Object.keys(habit.history).sort();
     if (dates.length === 0) return 0;
     let prevDate = null;
@@ -1405,8 +1337,7 @@ function getLongestStreakForHabit(habit) {
         if (isComplete) {
             if (prevDate) {
                 let diff = (new Date(date) - new Date(prevDate)) / (1000*3600*24);
-                if (diff === 1) currentStreak++;
-                else currentStreak = 1;
+                currentStreak = diff === 1 ? currentStreak + 1 : 1;
             } else {
                 currentStreak = 1;
             }
@@ -1436,8 +1367,9 @@ function updateLongestStreakDisplay() {
     }
 }
 
-// --- CALENDARIO Y GRÁFICO ---
+// --- CALENDARIO ---
 let calDate = new Date();
+
 function openStreak() {
     const habit = habits.find(h => h.id === currentHabitId);
     if (!habit) return;
@@ -1452,6 +1384,7 @@ function openStreak() {
     drawLineChartSVG();
     openSheet('streakSheet');
 }
+
 function renderCalendar() {
     const habit = habits.find(h => h.id === currentHabitId);
     if (!habit) return;
@@ -1469,7 +1402,6 @@ function renderCalendar() {
         const key = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         let qty = habit.history[key] || 0;
         let progress = Math.min(1, qty / habit.goal);
-        if (habit.type === 'quit') progress = Math.min(1, (habit.goal - qty) / habit.goal);
         const radius = 18, circ = 2 * Math.PI * radius, offset = circ - (progress * circ);
         const cell = document.createElement('div');
         cell.className = 'dayCell';
@@ -1478,7 +1410,9 @@ function renderCalendar() {
         grid.appendChild(cell);
     }
 }
+
 function changeMonth(dir) { calDate.setMonth(calDate.getMonth() + dir); renderCalendar(); }
+
 function drawLineChartSVG() {
     const habit = habits.find(h => h.id === currentHabitId);
     if (!habit) return;
@@ -1486,7 +1420,7 @@ function drawLineChartSVG() {
     if (!svg) return;
     let values = [];
     let today = new Date(); today.setHours(0,0,0,0);
-    for (let i=6; i>=0; i--) { let d = new Date(today); d.setDate(today.getDate()-i); let key = d.toISOString().split('T')[0]; let qty = habit.history[key] || 0; let p = Math.min(100, (qty/habit.goal)*100); if (habit.type === 'quit') p = Math.min(100, ((habit.goal - qty)/habit.goal)*100); values.push(p); }
+    for (let i=6; i>=0; i--) { let d = new Date(today); d.setDate(today.getDate()-i); let key = d.toISOString().split('T')[0]; let qty = habit.history[key] || 0; let p = Math.min(100, (qty/habit.goal)*100); values.push(p); }
     const w=400, hh=200, pad=30, stepX=(w-2*pad)/6, scaleY=(hh-2*pad)/100;
     const points = values.map((v,i)=> ({x:pad+i*stepX, y:hh-pad-v*scaleY}));
     const pathD = points.map((p,i)=> i===0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`).join(' ');
@@ -1509,6 +1443,7 @@ function openUnitsSheet() {
     });
     openSheet('unitsSheet');
 }
+
 function openUnitEditSheet(unitId) {
     currentUnitId = unitId;
     const deleteRow = document.getElementById('deleteUnitRow');
@@ -1524,6 +1459,7 @@ function openUnitEditSheet(unitId) {
     }
     openSheet('unitEditSheet');
 }
+
 function saveUnit() {
     const singular = document.getElementById('unitSingular').value.trim();
     const plural = document.getElementById('unitPlural').value.trim();
@@ -1540,6 +1476,7 @@ function saveUnit() {
     closeSheet('unitEditSheet');
     openUnitsSheet();
 }
+
 function deleteUnit() {
     if (!currentUnitId) return;
     if (units.length <= 1) return alert('Debe haber al menos una unidad');
@@ -1556,6 +1493,7 @@ function deleteUnit() {
     }
 }
 
+// --- GESTIÓN DE CARPETAS ---
 function openFoldersSheet() {
     const container = document.getElementById('foldersList');
     container.innerHTML = '';
@@ -1568,8 +1506,15 @@ function openFoldersSheet() {
         row.onclick = () => openFolderEditSheet(folder.id);
         container.appendChild(row);
     });
+    
+    const toggle = document.getElementById('folderShowIconsToggle');
+    if (toggle) {
+        if (showFolderIconsGlobal) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
     openSheet('foldersSheet');
 }
+
 function openFolderEditSheet(folderId = null) {
     currentFolderId = folderId;
     const deleteRow = document.getElementById('deleteFolderRow');
@@ -1581,39 +1526,33 @@ function openFolderEditSheet(folderId = null) {
         trigger.style.color = folder.iconColor || '#0076fa';
         folderSelectedIcon = folder.icon;
         folderSelectedColor = folder.iconColor || '#0076fa';
-        // Actualizar también el picker de color para que refleje el color actual
         const folderColorPicker = document.getElementById('folderIconColorPicker');
         if (folderColorPicker) folderColorPicker.value = folderSelectedColor;
         const preview = document.getElementById('folderColorPreview');
         if (preview) preview.style.background = folderSelectedColor;
-        const toggle = document.getElementById('folderShowIconsToggle');
-        if (folder.showIcons !== false) toggle.classList.add('active');
-        else toggle.classList.remove('active');
         deleteRow.style.display = 'block';
     } else {
         document.getElementById('folderName').value = '';
         const trigger = document.getElementById('folderIconTrigger');
-        trigger.textContent = '􀓔';
+        trigger.textContent = '􀈕';
         trigger.style.color = '#0076fa';
-        folderSelectedIcon = '􀓔';
+        folderSelectedIcon = '􀈕';
         folderSelectedColor = '#0076fa';
-        document.getElementById('folderShowIconsToggle').classList.add('active');
         deleteRow.style.display = 'none';
     }
     openSheet('folderEditSheet');
 }
+
 function saveFolder() {
     const name = document.getElementById('folderName').value.trim();
     if (!name) return alert('Nombre obligatorio');
-    const showIcons = document.getElementById('folderShowIconsToggle').classList.contains('active');
     if (currentFolderId) {
         const folder = folders.find(f => f.id === currentFolderId);
         folder.name = name;
         folder.icon = folderSelectedIcon;
         folder.iconColor = folderSelectedColor;
-        folder.showIcons = showIcons;
     } else {
-        folders.push({ id: genId(), name, icon: folderSelectedIcon, iconColor: folderSelectedColor, showIcons });
+        folders.push({ id: genId(), name, icon: folderSelectedIcon, iconColor: folderSelectedColor });
     }
     localStorage.setItem('folders', JSON.stringify(folders));
     populateFolderSelect();
@@ -1621,11 +1560,12 @@ function saveFolder() {
     openFoldersSheet();
     renderHabits();
 }
+
 function deleteFolder() {
-    if (!currentFolderId) return;
-    if (confirm('¿Eliminar esta carpeta? Los hábitos quedarán sin carpeta.')) {
+    if (!currentFolderId || currentFolderId === DEFAULT_FOLDER_ID) return;
+    if (confirm('¿Eliminar esta carpeta? Los hábitos quedarán en "Todos los hábitos".')) {
         folders = folders.filter(f => f.id !== currentFolderId);
-        habits.forEach(h => { if (h.folderId === currentFolderId) h.folderId = ''; });
+        habits.forEach(h => { if (h.folderId === currentFolderId) h.folderId = DEFAULT_FOLDER_ID; });
         localStorage.setItem('folders', JSON.stringify(folders));
         localStorage.setItem('habits', JSON.stringify(habits));
         populateFolderSelect();
@@ -1634,23 +1574,31 @@ function deleteFolder() {
         renderHabits();
     }
 }
+
 function toggleFolderShowIcons() {
+    showFolderIconsGlobal = !showFolderIconsGlobal;
+    localStorage.setItem('showFolderIconsGlobal', showFolderIconsGlobal);
     const toggle = document.getElementById('folderShowIconsToggle');
-    toggle.classList.toggle('active');
+    if (toggle) {
+        if (showFolderIconsGlobal) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+    renderHabits();
 }
+
 function populateFolderSelect() {
     const select = document.getElementById('hFolderSelect');
     if (!select) return;
-    select.innerHTML = '<option value="">Sin carpeta</option>';
+    select.innerHTML = '';
     folders.forEach(folder => {
         const option = document.createElement('option');
         option.value = folder.id;
-        option.textContent = `${folder.icon} ${folder.name}`;
+        option.textContent = folder.name;
         select.appendChild(option);
     });
 }
 
-// --- GESTIÓN DE HÁBITOS (ELIMINAR) ---
+// --- GESTIÓN DE HÁBITOS ---
 function openHabitsManagement() {
     const container = document.getElementById('habitsManagementList');
     container.innerHTML = '';
@@ -1662,6 +1610,7 @@ function openHabitsManagement() {
     });
     openSheet('habitsManagementSheet');
 }
+
 function deleteHabitById(id) {
     if (confirm('¿Eliminar este hábito?')) {
         habits = habits.filter(h => h.id !== id);
@@ -1670,20 +1619,14 @@ function deleteHabitById(id) {
         renderHabits();
     }
 }
+
 function deleteAllHabits() {
-    if (confirm('⚠️ ¿Eliminar TODOS los hábitos? Esta acción no se puede deshacer.')) {
+    if (confirm('¿Eliminar TODOS los hábitos? Esta acción no se puede deshacer.')) {
         habits = [];
         localStorage.setItem('habits', '[]');
         renderHabits();
         closeSheet('habitsManagementSheet');
     }
-}
-function deleteLogsForDate(habitId, dateStr) {
-    const habit = habits.find(h => h.id === habitId);
-    if (!habit) return;
-    if (!habit.logs) habit.logs = [];
-    habit.logs = habit.logs.filter(log => log.date !== dateStr);
-    localStorage.setItem('habits', JSON.stringify(habits));
 }
 
 // --- RESET FORM ---
@@ -1695,7 +1638,6 @@ function resetCreateForm() {
     document.getElementById('hGoal').value = '';
     document.getElementById('hStep').value = '';
     document.getElementById('hLink').value = '';
-    document.getElementById('hTypeSelect').value = 'build';
     setHourToggleState(false, '');
     setIntervalFormState(false, null);
     selectedIcon = '􀓔';
@@ -1708,6 +1650,7 @@ function resetCreateForm() {
     populateUnitSelect();
     populateFolderSelect();
 }
+
 function editHabit() {
     const habit = habits.find(h => h.id === currentHabitId);
     if (!habit) return;
@@ -1717,7 +1660,6 @@ function editHabit() {
     document.getElementById('hGoal').value = habit.goal;
     document.getElementById('hStep').value = habit.step;
     document.getElementById('hLink').value = habit.link || '';
-    document.getElementById('hTypeSelect').value = habit.type || 'build';
     setHourToggleState(!!habit.time, habit.time || '', habit.timeCondition || 'at');
     setIntervalFormState(habit.isInterval || false, habit.intervalUnit || null);
     selectedIcon = habit.icon;
@@ -1731,9 +1673,10 @@ function editHabit() {
     if (habit.folderId) document.getElementById('hFolderSelect').value = habit.folderId;
     closeSheet('viewSheet', () => openSheet('createSheet'));
 }
+
 function handleCloseHabit() { closeSheet(activeSheet); }
 
-// --- EXPORTAR / IMPORTAR / BORRAR DATOS ---
+// --- EXPORTAR / IMPORTAR ---
 function exportData() {
     const data = { habits, units, folders };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1746,6 +1689,7 @@ function exportData() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
+
 function importData(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1757,9 +1701,7 @@ function importData(event) {
                 if (imported.habits) habits = imported.habits;
                 if (imported.units) units = imported.units;
                 if (imported.folders) folders = imported.folders;
-                localStorage.setItem('habits', JSON.stringify(habits));
-                localStorage.setItem('units', JSON.stringify(units));
-                localStorage.setItem('folders', JSON.stringify(folders));
+                ensureDefaultFolder();
                 migrateHabits();
                 renderHabits();
                 populateUnitSelect();
@@ -1771,11 +1713,12 @@ function importData(event) {
     };
     reader.readAsText(file);
 }
+
 function confirmDeleteAllData() {
-    if (confirm('⚠️ Esto eliminará TODOS los hábitos y unidades. ¿Continuar?')) {
+    if (confirm('Esto eliminará TODOS los hábitos y unidades. ¿Continuar?')) {
         habits = [];
         units = [{ id: genId(), singular: 'vez', plural: 'veces' }];
-        folders = [{ id: genId(), name: 'General', icon: '􀓔', showIcons: true, iconColor: '#0076fa' }];
+        folders = [DEFAULT_FOLDER];
         localStorage.setItem('habits', '[]');
         localStorage.setItem('units', JSON.stringify(units));
         localStorage.setItem('folders', JSON.stringify(folders));
@@ -1786,7 +1729,7 @@ function confirmDeleteAllData() {
     }
 }
 
-// --- TIMER SHEET ---
+// --- TIMER ---
 function openTimerSheet() {
     if (!currentHabitId) return;
     const habit = habits.find(h => h.id === currentHabitId);
@@ -1801,6 +1744,7 @@ function openTimerSheet() {
     document.getElementById('timerStartPauseBtn').innerText = 'Iniciar';
     openSheet('timerSheet');
 }
+
 function timerStartPause() {
     const btn = document.getElementById('timerStartPauseBtn');
     if (!timerRunning) {
@@ -1826,6 +1770,7 @@ function timerStartPause() {
         }
     }
 }
+
 function updateTimerDisplay() {
     if (!timerStartTime) {
         document.getElementById('timerDisplay').innerText = formatDuration(timerElapsedSeconds);
@@ -1834,6 +1779,7 @@ function updateTimerDisplay() {
     const elapsed = Math.floor((Date.now() - timerStartTime) / 1000);
     document.getElementById('timerDisplay').innerText = formatDuration(elapsed);
 }
+
 function saveTimerLog() {
     if (!currentTimerLog || !currentTimerLog.startTime || !currentTimerLog.endTime || currentTimerLog.durationSeconds === undefined) {
         alert('No hay una sesión de temporizador completa para guardar. Debes pausar o detener primero.');
@@ -1841,16 +1787,13 @@ function saveTimerLog() {
     }
     const habit = habits.find(h => h.id === currentHabitId);
     if (!habit) return;
-    let amount;
-    if (habit.intervalUnit === 'hours') amount = currentTimerLog.durationSeconds / 3600;
-    else amount = currentTimerLog.durationSeconds / 60;
+    let amount = habit.intervalUnit === 'hours' ? currentTimerLog.durationSeconds / 3600 : currentTimerLog.durationSeconds / 60;
     if (amount <= 0) {
         alert('La duración registrada es cero, no se guardará.');
         return;
     }
     const oldQty = habit.history[selectedDate] || 0;
-    let newQty = oldQty + amount;
-    if (habit.type === 'quit' && newQty > habit.goal) newQty = habit.goal;
+    let newQty = Math.min(oldQty + amount, habit.goal);
     habit.history[selectedDate] = newQty;
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
@@ -1875,6 +1818,7 @@ function saveTimerLog() {
     timerRunning = false;
     currentTimerLog = null;
 }
+
 function closeTimerSheetWithoutSave() {
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = null;
@@ -1886,6 +1830,12 @@ function closeTimerSheetWithoutSave() {
 document.addEventListener('DOMContentLoaded', () => {
     loadAccentColors();
     initAccentPicker();
+    
+    const savedFolderIcons = localStorage.getItem('showFolderIconsGlobal');
+    if (savedFolderIcons !== null) {
+        showFolderIconsGlobal = savedFolderIcons === 'true';
+    }
+    
     const dateInput = document.getElementById('selectedDate');
     if (dateInput) {
         const today = new Date();
@@ -1946,7 +1896,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (topbar && !topbar.querySelector('.minimized-title')) {
         const titleSpan = document.createElement('span');
         titleSpan.className = 'minimized-title';
-        titleSpan.textContent = 'Routine';
+        titleSpan.textContent = 'Habits';
         topbar.appendChild(titleSpan);
     }
     
@@ -1955,6 +1905,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const searchInput = document.getElementById('habitSearchInput');
     if (searchInput) searchInput.addEventListener('input', searchHabits);
+    // Iniciar notificaciones
+setupNotificationPermission();
+startNotificationScheduler();
 });
 
 function populateUnitSelect() {
@@ -1968,6 +1921,7 @@ function populateUnitSelect() {
         select.appendChild(option);
     });
 }
+
 function populateIntervalUnitSelect() {
     const select = document.getElementById('hIntervalUnitSelect');
     if (!select) return;
@@ -1979,6 +1933,7 @@ function populateIntervalUnitSelect() {
 // --- SELECTOR DE DÍAS ---
 let diasSeleccionados = [0,1,2,3,4,5,6];
 const nombresDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
 function initDiasSelector() {
     const container = document.getElementById('diasTable');
     if (!container) return;
@@ -1993,11 +1948,17 @@ function initDiasSelector() {
         container.appendChild(row);
     }
 }
+
 function toggleDia(dia) {
-    if (diasSeleccionados.includes(dia)) diasSeleccionados = diasSeleccionados.filter(d => d !== dia);
-    else { diasSeleccionados.push(dia); diasSeleccionados.sort((a,b)=>a-b); }
+    if (diasSeleccionados.includes(dia)) {
+        diasSeleccionados = diasSeleccionados.filter(d => d !== dia);
+    } else {
+        diasSeleccionados.push(dia);
+        diasSeleccionados.sort((a,b)=>a-b);
+    }
     actualizarUIDias();
 }
+
 function actualizarUIDias() {
     document.querySelectorAll('#diasTable .diasRow').forEach(row => {
         const dia = parseInt(row.dataset.dia);
@@ -2006,7 +1967,7 @@ function actualizarUIDias() {
     });
 }
 
-// Exposición global de todas las funciones necesarias
+// --- EXPOSICIÓN GLOBAL ---
 window.updateQty = updateQty;
 window.openAddQuantitySheetById = openAddQuantitySheetById;
 window.openViewById = openViewById;
@@ -2054,9 +2015,151 @@ window.saveFolder = saveFolder;
 window.deleteFolder = deleteFolder;
 window.toggleFolderShowIcons = toggleFolderShowIcons;
 window.deleteCurrentLog = deleteCurrentLog;
+// --- NOTIFICACIONES ---
+let notificationPermission = false;
+let notificationsEnabled = true;
 
+// Cargar estado de notificaciones
+function loadNotificationsState() {
+    const saved = localStorage.getItem('notificationsEnabled');
+    if (saved !== null) {
+        notificationsEnabled = saved === 'true';
+    }
+    const toggle = document.getElementById('notificationsToggle');
+    if (toggle) {
+        if (notificationsEnabled) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+}
+
+// Toggle de notificaciones
+function toggleNotifications() {
+    notificationsEnabled = !notificationsEnabled;
+    localStorage.setItem('notificationsEnabled', notificationsEnabled);
+    const toggle = document.getElementById('notificationsToggle');
+    if (toggle) {
+        if (notificationsEnabled) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+    }
+    
+    // Si se activan las notificaciones y aún no hay permiso, pedirlo
+    if (notificationsEnabled && !notificationPermission && 'Notification' in window && Notification.permission !== 'denied') {
+        requestNotificationPermission();
+    }
+}
+
+// Solicitar permiso para notificaciones
+async function requestNotificationPermission() {
+    if (!notificationsEnabled) return;
+    if ('Notification' in window) {
+        const permission = await Notification.requestPermission();
+        notificationPermission = permission === 'granted';
+        if (notificationPermission) {
+            console.log('Notificaciones permitidas');
+        }
+    }
+}
+
+// Enviar notificación
+function sendNotification(title, body, tag = 'habit') {
+    if (!notificationsEnabled) return;
+    if (!notificationPermission) return;
+    
+    new Notification(title, {
+        body: body,
+        icon: '/icon-192.png',
+        tag: tag,
+        requireInteraction: false,
+        silent: false
+    });
+}
+
+// Verificar hábitos programados
+function checkScheduledHabits() {
+    if (!notificationsEnabled) return;
+    
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const currentHour = now.getHours().toString().padStart(2, '0');
+    const currentMinute = now.getMinutes().toString().padStart(2, '0');
+    const currentTime = `${currentHour}:${currentMinute}`;
+    
+    let currentDay = now.getDay();
+    currentDay = currentDay === 0 ? 6 : currentDay - 1;
+    
+    for (let habit of habits) {
+        if (!habit.time) continue;
+        if (habit.dias && !habit.dias.includes(currentDay)) continue;
+        
+        const completedToday = (habit.history[todayStr] || 0) >= habit.goal;
+        if (completedToday) continue;
+        
+        let shouldNotify = false;
+        
+        if (habit.timeCondition === 'at') {
+            shouldNotify = habit.time === currentTime;
+        } else if (habit.timeCondition === 'before') {
+            shouldNotify = currentTime >= habit.time;
+        } else if (habit.timeCondition === 'after') {
+            const lastNotified = localStorage.getItem(`notified_${habit.id}_${todayStr}`);
+            if (!lastNotified && currentTime >= habit.time) {
+                shouldNotify = true;
+            }
+        }
+        
+        if (shouldNotify) {
+            const unitName = habit.isInterval ? (habit.intervalUnit === 'hours' ? 'horas' : 'minutos') : getUnitById(habit.unitId).plural;
+            sendNotification(
+                `⏰ ${habit.name}`,
+                `Objetivo: ${habit.goal} ${unitName}. ¿Ya lo cumpliste?`,
+                habit.id
+            );
+            localStorage.setItem(`notified_${habit.id}_${todayStr}`, 'true');
+        }
+    }
+}
+
+function startNotificationScheduler() {
+    checkScheduledHabits();
+    setInterval(checkScheduledHabits, 60000);
+}
+
+function setupNotificationPermission() {
+    // Al abrir settings, si el toggle está activo y no hay permiso, mostrar opción
+    const settingsBtn = document.getElementById('settingsBtn');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            if (notificationsEnabled && !notificationPermission && 'Notification' in window && Notification.permission !== 'denied') {
+                // No pedir automáticamente, solo si el usuario quiere
+            }
+        });
+    }
+    
+    // También al hacer clic en cualquier parte (solo si las notificaciones están activadas)
+    document.addEventListener('click', function onClick() {
+        if (notificationsEnabled && !notificationPermission && 'Notification' in window && Notification.permission === 'default') {
+            requestNotificationPermission();
+            document.removeEventListener('click', onClick);
+        }
+    }, { once: true });
+}
+
+function cleanOldNotificationMarks() {
+    const today = new Date().toISOString().split('T')[0];
+    for (let key in localStorage) {
+        if (key.startsWith('notified_') && !key.includes(today)) {
+            localStorage.removeItem(key);
+        }
+    }
+}
+
+// Inicializar todo
+cleanOldNotificationMarks();
+loadNotificationsState();
+setupNotificationPermission();
+startNotificationScheduler();
 // Folder icon picker globals
-let folderSelectedIcon = '􀓔';
+let folderSelectedIcon = '􀈕';
 let folderSelectedColor = '#0076ff';
 const folderColorPicker = document.getElementById('folderIconColorPicker');
 const folderColorPreview = document.getElementById('folderColorPreview');
@@ -2069,6 +2172,7 @@ if (folderColorPicker) {
         initIconsFolder();
     });
 }
+
 function initIconsFolder(filter = "") {
     const grid = document.getElementById('iconGridFolder');
     if (!grid || typeof iconData === 'undefined') return;
@@ -2104,6 +2208,7 @@ function initIconsFolder(filter = "") {
         }
     }
 }
+
 document.getElementById('confirmIconBtnFolder')?.addEventListener('click', () => {
     closeSheet('iconPickerSheetFolder', () => openSheet('folderEditSheet'));
 });
